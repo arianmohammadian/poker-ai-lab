@@ -1,6 +1,10 @@
 # CMake build directories
 /build/
+/build-release/
 /cmake-build-*/
+
+# Compiled binaries
+/card_test
 
 # Compiled files
 *.o
@@ -11,6 +15,7 @@
 
 # Editor
 .vscode/
+.DS_Store
 .idea/
 
 # Python (future)
