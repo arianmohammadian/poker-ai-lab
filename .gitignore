@@ -1,0 +1,21 @@
+# CMake build directories
+/build/
+/cmake-build-*/
+
+# Compiled files
+*.o
+*.a
+*.so
+*.out
+*.exe
+
+# Editor
+.vscode/
+.idea/
+
+# Python (future)
+__pycache__/
+.venv/
+
+# Generated experiment data
+/results/
