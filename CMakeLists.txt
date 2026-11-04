@@ -48,4 +48,14 @@ if(BUILD_TESTING)
     add_executable(seven_card_hand_evaluator_test tests/seven_card_hand_evaluator_test.cc)
     target_link_libraries(seven_card_hand_evaluator_test PRIVATE poker_core)
     add_test(NAME seven_card_hand_evaluator_test COMMAND seven_card_hand_evaluator_test)
+
+    # Equity Result tests
+    add_executable(equity_result_test tests/equity_result_test.cc)
+    target_link_libraries(equity_result_test PRIVATE poker_core)
+    add_test(NAME equity_result_test COMMAND equity_result_test)
+
+    # Equity Input tests 
+    add_executable(equity_input_test tests/equity_input_test.cc)
+    target_link_libraries(equity_input_test PRIVATE poker_core)
+    add_test(NAME equity_input_test COMMAND equity_input_test)
 endif()
