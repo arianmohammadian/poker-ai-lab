@@ -2,124 +2,237 @@
 
 ### From poker rules to poker intelligence.
 
-**Building a Texas Hold'em engine, game-theoretic solvers, and AI agents that learn through self-play.**
+**Engineering a Texas Hold'em platform where AI agents can play, learn, compete, and evolve.**
 
-Poker AI Lab is a long-term C++20 software engineering and artificial intelligence project focused on **Heads-Up No-Limit Texas Hold'em**.
+Poker AI Lab is a long-term **C++20 software engineering and artificial intelligence project** focused on Heads-Up No-Limit Texas Hold'em.
 
-The goal is to develop a platform where poker agents can play, learn, compete, and evolve through reproducible experiments.
+The goal is to build a modular platform combining a high-performance poker engine, game-theoretic solvers, self-learning AI agents, and an interactive environment for gameplay and analysis.
 
-From hand evaluation and probability calculations to imperfect-information game solving and self-play, the project explores the intersection of **algorithms, probability, game theory, reinforcement learning, and high-performance computing**.
+Starting from fundamental poker algorithms, the project progressively explores **probability, game theory, reinforcement learning, self-play, and high-performance computing**.
+
+The ultimate challenge: **can we build a poker AI that learns to become a stronger player?**
+
+---
 
 ## Vision
 
 Poker AI Lab is built around three main capabilities:
 
-- **Play:** Compete against custom poker agents and observe AI-versus-AI matches.
-- **Train:** Develop increasingly sophisticated agents and investigate learning through self-play.
-- **Analyze:** Calculate equity, study strategies, explore game-theoretic solutions, and evaluate agent performance.
+- **Play** — Challenge custom poker agents and observe AI-versus-AI matches.
+- **Train** — Develop intelligent agents that improve through self-play and experimentation.
+- **Analyze** — Calculate equity, investigate strategies, approximate game-theoretic equilibria, and evaluate agent performance.
 
-The ultimate goal is not simply to build a poker game, but to create an environment for engineering, training, and understanding poker intelligence.
+Rather than relying on existing poker engines or solvers, the project emphasizes implementing and understanding the underlying algorithms from the ground up.
+
+Correctness, reproducibility, and measurable progress are fundamental to its development.
 
 ## Current Progress
 
 **Status: Active Development — v0.1 Poker Core**
 
-The project has moved beyond initial planning and into implementation.
+Development is currently focused on building a reliable and independently tested foundation for Texas Hold'em.
 
 ### Implemented
 
-- Card representation using C++20.
-- Five-card poker hand evaluation.
-- Hand classification and tie-breaking logic.
-- Automated tests for the hand evaluator.
-- Continuous integration (CI) for automated validation.
-- CMake-based build configuration.
+- [x] Strongly typed card representation (`Rank`, `Suit`, `Card`)
+- [x] Standard 52-card deck
+- [x] Hand strength representation and comparison (`HandRank`)
+- [x] Five-card poker hand evaluator
+- [x] Hand classification, kicker comparison, and tie-breaking
+- [x] Ace-low straight handling
+- [x] Input validation and duplicate-card detection
+- [x] Automated component tests
+- [x] Exhaustive five-card hand category verification
+- [x] CMake build system with C++20
+- [x] Continuous integration using GitHub Actions
 
-### In Progress
+### In Progress / Next Steps
 
-- Completing the Poker Core milestone.
-- Extending hand evaluation to seven-card Texas Hold'em hands.
-- Expanding correctness tests and performance benchmarks.
+- [ ] Seven-card hand evaluation (best five out of seven)
+- [ ] Additional independent correctness validation
+- [ ] Performance benchmarks
+- [ ] Sanitizer-based validation
+- [ ] Minimal command-line demonstration
+
+### Exhaustive Hand Evaluation Testing
+
+The five-card evaluator includes an exhaustive test covering all:
+
+**2,598,960 possible five-card combinations**
+
+The test verifies the distribution of standard poker hand categories against their mathematically known frequencies.
+
+| Hand Category   |  Combinations |
+| --------------- | ------------: |
+| Straight Flush  |            40 |
+| Four of a Kind  |           624 |
+| Full House      |         3,744 |
+| Flush           |         5,108 |
+| Straight        |        10,200 |
+| Three of a Kind |        54,912 |
+| Two Pair        |       123,552 |
+| One Pair        |     1,098,240 |
+| High Card       |     1,302,540 |
+| **Total**       | **2,598,960** |
+
+Additional tests cover hand comparisons, tie-breaking, invalid inputs, and important edge cases.
+
+This validation provides a foundation for future seven-card evaluation, equity calculations, and poker simulations.
+
+---
 
 ## Project Components
 
-| Component | Description |
-|---|---|
-| Poker Core | Card representation, deck management, and hand evaluation |
-| Equity Calculator | Exact equity computation and Monte Carlo simulation |
-| Game Engine | Heads-Up No-Limit Texas Hold'em rules and betting |
-| AI Agents | Baseline, heuristic, and learned poker agents |
-| Poker Solver | Counterfactual Regret Minimization and game-theoretic research |
-| Training | Self-play, agent improvement, and reproducible experiments |
-| Poker Arena | Human-versus-AI and AI-versus-AI gameplay |
-| Analytics | Benchmarks, statistics, and strategy visualization |
+| Component         | Purpose                                             | Status         |
+| ----------------- | --------------------------------------------------- | -------------- |
+| Poker Core        | Cards, deck management, hand evaluation             | In development |
+| Equity Calculator | Exact enumeration and Monte Carlo simulation        | Planned        |
+| Game Engine       | Heads-Up NLHE rules, betting, and state transitions | Planned        |
+| AI Agents         | Random, heuristic, and learned strategies           | Planned        |
+| Poker Solver      | CFR and imperfect-information game solving          | Planned        |
+| Training          | Self-play and reproducible learning experiments     | Planned        |
+| Poker Arena       | Human-versus-AI and AI-versus-AI gameplay           | Planned        |
+| Analytics         | Benchmarks, statistics, and strategy visualization  | Planned        |
+
+The components describe the long-term architecture. They will be implemented incrementally rather than introduced as empty modules.
 
 ## Development Roadmap
 
-Development follows incremental, independently testable milestones.
+Development follows independently testable milestones, prioritizing correctness before optimization.
 
-| Version | Milestone | Status |
-|---|---|---|
-| v0.1 | Poker Core & Hand Evaluator | In progress |
-| v0.2 | Equity Calculator | Planned |
-| v0.3 | Heads-Up Game Engine | Planned |
-| v0.4 | First AI Arena (CLI) | Planned |
-| v0.5 | CFR Research Lab | Planned |
-| v0.6 | Self-Play Training | Planned |
-| v0.7+ | Visual Arena & Advanced Research | Planned |
+| Version | Milestone                        | Status      |
+| ------- | -------------------------------- | ----------- |
+| v0.1    | Poker Core & Hand Evaluator      | In progress |
+| v0.2    | Equity Calculator                | Planned     |
+| v0.3    | Heads-Up NLHE Game Engine        | Planned     |
+| v0.4    | First AI Arena (CLI)             | Planned     |
+| v0.5    | CFR Research Lab                 | Planned     |
+| v0.6    | Self-Play Training               | Planned     |
+| v0.7+   | Visual Arena & Advanced Research | Planned     |
 
-See [Development Roadmap](docs/ROADMAP.md) for detailed milestones and acceptance criteria.
+Each milestone has explicit functionality, testing requirements, and acceptance criteria.
+
+See the [Development Roadmap](docs/ROADMAP.md) for details.
 
 ## Technology Stack
 
-**Core development**
+**Core Development**
+
 - C++20
-- CMake
 - C++ Standard Library
-- Catch2 for automated testing
+- CMake
+- CTest
 
-**Development environment**
-- Ubuntu / WSL
+**Development & Quality**
+
 - GCC
+- Ubuntu / WSL
 - Visual Studio Code
-- Git and GitHub
-- GitHub Actions for continuous integration
+- Git & GitHub
+- GitHub Actions (CI)
 
-**Planned technologies**
-- Python for experiments and data analysis
-- React and TypeScript for a future web interface
+**Planned Technologies**
+
+- Python for experiments, benchmarking, and data analysis
+- React and TypeScript for the future visual arena
+
+The core poker algorithms are implemented in C++ rather than delegated to external poker libraries.
+
+## Building & Testing
+
+### Requirements
+
+- A C++20-compatible compiler (GCC recommended)
+- CMake 3.16 or newer
+- Git
+
+### Clone
+
+```bash
+git clone https://github.com/arianmohammadian/poker-ai-lab.git
+cd poker-ai-lab
+```
+
+### Build
+
+Configure and compile the project:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+For a Debug build, use a separate build directory:
+
+```bash
+cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-debug --parallel
+```
+
+### Run Tests
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+The project uses automated C++ test executables registered with CTest.
+
+Continuous integration runs the build and test suite through GitHub Actions for both Debug and Release configurations.
 
 ## Engineering Principles
 
-1. **Correctness first:** Algorithms and game rules must be thoroughly validated.
-2. **Modular architecture:** Components should have clear responsibilities and controlled dependencies.
-3. **Reproducibility:** Experiments must support deterministic execution where appropriate, controlled randomness, and documented configurations.
-4. **Performance through measurement:** Optimize based on benchmarks and profiling.
-5. **Incremental development:** Every milestone should produce working, testable functionality.
-6. **Algorithmic understanding:** Core algorithms are implemented and studied rather than treated as black boxes.
+**1. Correctness Before Optimization**
+
+Game rules and algorithms must be thoroughly tested before performance improvements are introduced.
+
+**2. Modular Architecture**
+
+Components should have clear responsibilities, explicit dependencies, and reusable interfaces.
+
+**3. Reproducibility**
+
+Simulations and experiments should use controlled randomness, documented configurations, and repeatable evaluation procedures.
+
+**4. Performance Through Measurement**
+
+Optimizations should be justified by benchmarks and profiling rather than assumptions.
+
+**5. Incremental Development**
+
+Each milestone should produce working, verifiable functionality before expanding the project's scope.
+
+**6. Algorithmic Understanding**
+
+Core algorithms are implemented, analyzed, and tested rather than treated as black boxes.
 
 ## Research Direction
 
-The long-term research focus includes:
+The long-term research objectives include:
 
 - Exact and approximate poker equity computation
 - Counterfactual Regret Minimization (CFR)
-- Strategy approximation in imperfect-information games
+- CFR+ and alternative regret-minimization techniques
+- Imperfect-information game solving
 - Reinforcement learning and self-play
-- Agent evaluation and exploitative strategies
-- Computational efficiency and algorithmic optimization
+- Exploitative and approximate equilibrium strategies
+- Statistical evaluation of agent performance
+- Efficient simulation and parallel computation
 
-Simplified poker games, such as Kuhn Poker and Leduc Poker, may be used as isolated experiments to validate game-solving algorithms.
+Simplified games such as Kuhn Poker and Leduc Poker may be implemented as isolated research experiments to validate game-theoretic algorithms before applying them to Texas Hold'em.
 
-Solving full-scale No-Limit Texas Hold'em is not an initial objective.
+**Solving full-scale No-Limit Texas Hold'em is not an initial objective.**
+
+The emphasis is on progressively building, understanding, and evaluating increasingly sophisticated poker intelligence.
 
 ## Documentation
 
 - [Development Roadmap](docs/ROADMAP.md) — Milestones, deliverables, and acceptance criteria.
-- [Software Architecture](docs/ARCHITECTURE.md) — Design principles, module boundaries, and architectural decisions.
+- [Software Architecture](docs/ARCHITECTURE.md) — Architectural principles, component responsibilities, and design decisions.
+
+Documentation will evolve alongside the implementation, benchmarks, and experimental results.
 
 ## License
 
-Distributed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
 
 Copyright © 2026 Arian Mohammadian.
