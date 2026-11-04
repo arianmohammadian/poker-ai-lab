@@ -13,6 +13,7 @@ include(CTest)
 
 add_library(poker_core
     src/card.cc
+    src/deck.cc
 )
 
 target_include_directories(poker_core
@@ -23,10 +24,26 @@ target_include_directories(poker_core
 if(BUILD_TESTING)
     add_executable(card_test
         tests/card_test.cc
+        
+    )
+
+    add_executable(deck_test
+        tests/deck_test.cc
+        
     )
 
     target_link_libraries(card_test
         PRIVATE poker_core
+    )
+
+    target_link_libraries(deck_test
+        PRIVATE poker_core
+    
+    )
+
+    add_test(
+        NAME deck_test
+        COMMAND deck_test
     )
 
     add_test(
