@@ -1,22 +1,45 @@
 # ♠ Poker AI Lab
 
-**Building poker engines, solving imperfect-information games, and training intelligent agents from scratch.**
+### From poker rules to poker intelligence.
 
-Poker AI Lab is a long-term software engineering and artificial intelligence project focused on **Heads-Up No-Limit Texas Hold'em**, primarily developed in C++20.
+**Building a Texas Hold'em engine, game-theoretic solvers, and AI agents that learn through self-play.**
 
-The goal is to build a modular platform where poker agents can play, learn through self-play, compete against each other, and be evaluated through reproducible experiments.
+Poker AI Lab is a long-term C++20 software engineering and artificial intelligence project focused on **Heads-Up No-Limit Texas Hold'em**.
 
-The project explores the intersection of **algorithms, probability, game theory, reinforcement learning, and high-performance software engineering**.
+The goal is to develop a platform where poker agents can play, learn, compete, and evolve through reproducible experiments.
+
+From hand evaluation and probability calculations to imperfect-information game solving and self-play, the project explores the intersection of **algorithms, probability, game theory, reinforcement learning, and high-performance computing**.
 
 ## Vision
 
-Poker AI Lab is designed around three main capabilities:
+Poker AI Lab is built around three main capabilities:
 
 - **Play:** Compete against custom poker agents and observe AI-versus-AI matches.
 - **Train:** Develop increasingly sophisticated agents and investigate learning through self-play.
-- **Analyze:** Calculate equity, investigate strategies, study imperfect-information game solving, and evaluate agent performance.
+- **Analyze:** Calculate equity, study strategies, explore game-theoretic solutions, and evaluate agent performance.
 
-The long-term objective is not merely to build a poker game, but to create an environment for developing and understanding poker AI.
+The ultimate goal is not simply to build a poker game, but to create an environment for engineering, training, and understanding poker intelligence.
+
+## Current Progress
+
+**Status: Active Development — v0.1 Poker Core**
+
+The project has moved beyond initial planning and into implementation.
+
+### Implemented
+
+- Card representation using C++20.
+- Five-card poker hand evaluation.
+- Hand classification and tie-breaking logic.
+- Automated tests for the hand evaluator.
+- Continuous integration (CI) for automated validation.
+- CMake-based build configuration.
+
+### In Progress
+
+- Completing the Poker Core milestone.
+- Extending hand evaluation to seven-card Texas Hold'em hands.
+- Expanding correctness tests and performance benchmarks.
 
 ## Project Components
 
@@ -35,17 +58,17 @@ The long-term objective is not merely to build a poker game, but to create an en
 
 Development follows incremental, independently testable milestones.
 
-| Version | Milestone |
-|---|---|
-| v0.1 | Hand Evaluator |
-| v0.2 | Equity Calculator |
-| v0.3 | Heads-Up Game Engine |
-| v0.4 | First AI Arena (CLI) |
-| v0.5 | CFR Research Lab |
-| v0.6 | Self-Play Training |
-| v0.7+ | Visual Arena and Advanced Research |
+| Version | Milestone | Status |
+|---|---|---|
+| v0.1 | Poker Core & Hand Evaluator | In progress |
+| v0.2 | Equity Calculator | Planned |
+| v0.3 | Heads-Up Game Engine | Planned |
+| v0.4 | First AI Arena (CLI) | Planned |
+| v0.5 | CFR Research Lab | Planned |
+| v0.6 | Self-Play Training | Planned |
+| v0.7+ | Visual Arena & Advanced Research | Planned |
 
-See `docs/ROADMAP.md` for detailed milestones and acceptance criteria once available.
+See [Development Roadmap](docs/ROADMAP.md) for detailed milestones and acceptance criteria.
 
 ## Technology Stack
 
@@ -60,10 +83,11 @@ See `docs/ROADMAP.md` for detailed milestones and acceptance criteria once avail
 - GCC
 - Visual Studio Code
 - Git and GitHub
+- GitHub Actions for continuous integration
 
 **Planned technologies**
 - Python for experiments and data analysis
-- React and TypeScript for the future web interface
+- React and TypeScript for a future web interface
 
 ## Engineering Principles
 
@@ -89,18 +113,13 @@ Simplified poker games, such as Kuhn Poker and Leduc Poker, may be used as isola
 
 Solving full-scale No-Limit Texas Hold'em is not an initial objective.
 
-## Project Status
-
-**Current stage: Planning and architecture design.**
-
-No implementation has been released yet.
-
-The first development milestone will focus on a reliable hand evaluator for Texas Hold'em, followed by an equity calculator supporting exact enumeration and Monte Carlo simulation.
-
 ## Documentation
 
-As the project evolves, technical documentation, architecture decisions, benchmarks, and experimental results will be added.
+- [Development Roadmap](docs/ROADMAP.md) — Milestones, deliverables, and acceptance criteria.
+- [Software Architecture](docs/ARCHITECTURE.md) — Design principles, module boundaries, and architectural decisions.
 
 ## License
 
-License to be selected before the first public release.
+Distributed under the [MIT License](LICENSE).
+
+Copyright © 2026 Arian Mohammadian.
