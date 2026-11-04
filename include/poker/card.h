@@ -1,3 +1,8 @@
+/**
+ * @file card.h
+ * @brief Representation of a standard playing card.
+ * @author Arian Mohammadian
+ */
 #pragma once
 
 #include "poker/rank.h"

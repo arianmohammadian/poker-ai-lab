@@ -1,3 +1,8 @@
+/**
+ * @file suit.h
+ * @brief Defines the four standard playing card suits.
+ * @author Arian Mohammadian
+ */
 #pragma once
 
 #include <cstdint>

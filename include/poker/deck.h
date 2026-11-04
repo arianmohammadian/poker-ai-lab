@@ -1,3 +1,8 @@
+/**
+ * @file deck.h
+ * @brief Defines a standard 52-card deck with shuffling and dealing operations.
+ * @author Arian Mohammadian
+ */
 #pragma once
 
 #include "poker/card.h"

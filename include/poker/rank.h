@@ -1,3 +1,8 @@
+/**
+ * @file rank.h
+ * @brief Defines the thirteen standard playing card ranks.
+ * @author Arian Mohammadian
+ */
 #pragma once
 
 #include <cstdint>
