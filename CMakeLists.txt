@@ -15,6 +15,7 @@ add_library(poker_core
     src/card.cc
     src/deck.cc
     src/hand_rank.cc
+    src/hand_evaluator.cc
 )
 
 target_include_directories(poker_core
@@ -37,4 +38,9 @@ if(BUILD_TESTING)
     add_executable(hand_rank_test tests/hand_rank_test.cc)
     target_link_libraries(hand_rank_test PRIVATE poker_core)
     add_test(NAME hand_rank_test COMMAND hand_rank_test)
+
+    # HandEvaluator tests
+    add_executable(hand_evaluator_test tests/hand_evaluator_test.cc)
+    target_link_libraries(hand_evaluator_test PRIVATE poker_core)
+    add_test(NAME hand_evaluator_test COMMAND hand_evaluator_test)
 endif()
