@@ -142,25 +142,25 @@ void testOrderIndependence() {
 
 void testComparisons() {
     const HandRank onePairA = HandEvaluator::evaluate(
-        {card(14, 0), card(14, 1), card(13, 2), card(12, 3), card(9, 0)});
+        Cards{card(14, 0), card(14, 1), card(13, 2), card(12, 3), card(9, 0)});
     const HandRank onePairB = HandEvaluator::evaluate(
-        {card(14, 2), card(14, 3), card(13, 0), card(11, 1), card(10, 2)});
+        Cards{card(14, 2), card(14, 3), card(13, 0), card(11, 1), card(10, 2)});
     check(onePairA > onePairB, "Second kicker decides equal pairs");
 
     const HandRank flushA = HandEvaluator::evaluate(
-        {card(14, 0), card(13, 0), card(11, 0), card(8, 0), card(3, 0)});
+        Cards{card(14, 0), card(13, 0), card(11, 0), card(8, 0), card(3, 0)});
     const HandRank flushB = HandEvaluator::evaluate(
-        {card(14, 1), card(13, 1), card(10, 1), card(9, 1), card(5, 1)});
+        Cards{card(14, 1), card(13, 1), card(10, 1), card(9, 1), card(5, 1)});
     check(flushA > flushB, "Flush comparison uses all five ranks");
 
     const HandRank sameFlush = HandEvaluator::evaluate(
-        {card(14, 2), card(13, 2), card(11, 2), card(8, 2), card(3, 2)});
+        Cards{card(14, 2), card(13, 2), card(11, 2), card(8, 2), card(3, 2)});
     check(flushA == sameFlush, "Suit does not break ties");
 
     const HandRank wheel = HandEvaluator::evaluate(
-        {card(14, 0), card(5, 1), card(4, 2), card(3, 3), card(2, 0)});
+        Cards{card(14, 0), card(5, 1), card(4, 2), card(3, 3), card(2, 0)});
     const HandRank sixHigh = HandEvaluator::evaluate(
-        {card(6, 0), card(5, 1), card(4, 2), card(3, 3), card(2, 0)});
+        Cards{card(6, 0), card(5, 1), card(4, 2), card(3, 3), card(2, 0)});
     check(sixHigh > wheel, "Six-high straight beats wheel");
 }
 

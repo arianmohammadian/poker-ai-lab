@@ -6,6 +6,35 @@ namespace poker {
 
 using std::invalid_argument;
 
+namespace {
+
+std::array<Card, 5> createCombination(const std::array<Card, 7>& cards, int i, int j) {
+    std::array<Card, 5> res = {cards[0], cards[1], cards[2], cards[3], cards[4]};
+    int index = 0;
+
+    for(int it = 0; it < 7; it++) {
+        if(it != i && it != j) res[index++] = cards[it];
+    }
+
+    return res;
+}    
+
+} // namespace
+
+HandRank HandEvaluator::evaluate(const std::array<Card, 7>& cards) {
+    HandRank best = evaluate(createCombination(cards, 0, 1));
+
+    for(int i = 0; i < 7; i++) {
+        for(int j = i + 1; j < 7; j++) {
+            if(i == 0 && j == 1) continue;
+            HandRank current = evaluate(createCombination(cards, i, j));
+            if(current > best) best = current;
+        }
+    }
+
+    return best;
+}
+
 HandRank HandEvaluator::evaluate(const std::array<Card, 5>& cards) {
     std::array<int, 15> rankCounts{};
     std::array<int, 4> suitCounts{};

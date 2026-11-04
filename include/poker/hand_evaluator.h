@@ -1,6 +1,6 @@
 /**
  * @file hand_evaluator.h
- * @brief Computes the rank of a hand, given by 5 cards, in the game.
+ * @brief Evaluates five-card and seven-card poker hands.
  * @author Arian Mohammadian
  */
 #pragma once
@@ -14,6 +14,7 @@ namespace poker {
 
 class HandEvaluator {
 public:
+    [[nodiscard]] static HandRank evaluate(const std::array<Card, 7>& cards);
     [[nodiscard]] static HandRank evaluate(const std::array<Card, 5>& cards);
 };
 

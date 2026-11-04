@@ -39,8 +39,13 @@ if(BUILD_TESTING)
     target_link_libraries(hand_rank_test PRIVATE poker_core)
     add_test(NAME hand_rank_test COMMAND hand_rank_test)
 
-    # HandEvaluator tests
+    # HandEvaluator tests (5 cards)
     add_executable(hand_evaluator_test tests/hand_evaluator_test.cc)
     target_link_libraries(hand_evaluator_test PRIVATE poker_core)
     add_test(NAME hand_evaluator_test COMMAND hand_evaluator_test)
+
+    # HandEvaluator tests (7 cards)
+    add_executable(seven_card_hand_evaluator_test tests/seven_card_hand_evaluator_test.cc)
+    target_link_libraries(seven_card_hand_evaluator_test PRIVATE poker_core)
+    add_test(NAME seven_card_hand_evaluator_test COMMAND seven_card_hand_evaluator_test)
 endif()
