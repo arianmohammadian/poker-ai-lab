@@ -7,6 +7,7 @@
 
 #include "poker/player_state.h"
 #include "poker/street.h"
+#include "poker/hand_phase.h"
 
 #include <optional>
 #include <vector>
@@ -30,6 +31,10 @@ public:
     [[nodiscard]] std::uint8_t button() const noexcept;
     [[nodiscard]] std::optional<std::uint8_t> actingPlayer() const noexcept;
     [[nodiscard]] std::int64_t pot() const noexcept;
+    [[nodiscard]] std::int64_t payout(std::uint8_t index) const;
+    [[nodiscard]] HandPhase phase() const noexcept;
+    [[nodiscard]] std::uint8_t actionsToClose() const noexcept;
+    [[nodiscard]] std::int64_t lastFullRaise() const noexcept;
 
 private:
     std::array<PlayerState, 2> players_;
@@ -37,6 +42,10 @@ private:
     Street street_;
     std::uint8_t button_;
     std::optional<std::uint8_t> actingPlayer_;
+    HandPhase phase_;
+    std::uint8_t actionsToClose_;
+    std::int64_t lastFullRaise_;
+    std::array<std::int64_t, 2> payouts_;
 };
 
 } // namespace poker

@@ -24,6 +24,8 @@ public:
     [[nodiscard]] bool isAllIn() const noexcept;
 
     void commitChips(std::int64_t amount);
+    void refundChips(std::int64_t amount);
+    void awardChips(std::int64_t amount);
     void fold() noexcept;
     void beginNewStreet() noexcept;
     

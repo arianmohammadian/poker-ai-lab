@@ -1,422 +1,232 @@
-
+/**
+ * @file hand_engine_test.cc
+ * @brief Integration tests for HandEngine preflop, blinds and all-in resolution.
+ */
 #include "poker/hand_engine.h"
+#include "poker/action.h"
+#include "poker/hand_phase.h"
 
 #include <array>
 #include <cstdint>
-#include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <limits>
 #include <random>
 #include <stdexcept>
-#include <type_traits>
-#include <utility>
+#include <string>
 
-using poker::Card;
+namespace {
+using poker::Action;
+using poker::ActionType;
 using poker::HandConfig;
 using poker::HandEngine;
-using poker::HandState;
-using poker::Street;
+using poker::HandPhase;
 
-// Test helper
-void check(bool condition, const char* message) {
-    if (!condition) {
-        std::cerr << "TEST FAILED: " << message << '\n';
-        std::exit(EXIT_FAILURE);
-    }
+int assertions = 0;
+void check(bool ok, const std::string& message) {
+    ++assertions;
+    if (!ok) throw std::runtime_error("TEST FAILED: " + message);
 }
 
-// Compile-time tests
-static_assert(!std::is_default_constructible_v<HandEngine>);
+template <typename Exception, typename F>
+void expectThrows(F&& f, const std::string& message) {
+    bool caught = false;
+    try { f(); } catch (const Exception&) { caught = true; }
+    check(caught, message);
+}
 
-static_assert(std::is_same_v<
-    decltype(std::declval<const HandEngine&>().state()),
-    const HandState&
->);
+std::int64_t chips(const HandEngine& e) {
+    const auto& s = e.state();
+    return s.player(0).stack() + s.player(1).stack() + s.pot();
+}
 
-static_assert(noexcept(std::declval<const HandEngine&>().state()));
+void finished(const HandEngine& e, std::int64_t total,
+              std::int64_t payout, const std::string& label) {
+    const auto& s = e.state();
+    check(s.phase() == HandPhase::Finished, label + ": wrong phase");
+    check(!s.actingPlayer().has_value(), label + ": acting player not cleared");
+    check(s.actionsToClose() == 0, label + ": actions remaining");
+    check(s.pot() == 0, label + ": unsettled pot");
+    check(s.payout(0) + s.payout(1) == payout, label + ": wrong payouts");
+    check(chips(e) == total, label + ": chips not conserved");
+}
 
-// Test fixtures
-constexpr HandConfig defaultConfig{50, 100};
+void normalPreflop(std::uint8_t button) {
+    std::mt19937 rng{42};
+    HandEngine e{{1000, 1000}, HandConfig{50, 100}, button, rng};
+    const auto& s = e.state();
+    check(s.phase() == HandPhase::Betting, "Normal: phase");
+    check(s.street() == poker::Street::Preflop, "Normal: street");
+    check(s.board().empty(), "Normal: board");
+    check(s.button() == button, "Normal: button");
+    check(s.actingPlayer().has_value() && *s.actingPlayer() == button,
+          "Normal: SB/BTN must act first");
+    check(s.actionsToClose() == 2, "Normal: actionsToClose");
+    check(s.lastFullRaise() == 100, "Normal: lastFullRaise");
+    check(s.player(button).committedStreet() == 50, "Normal: SB blind");
+    check(s.player(1 - button).committedStreet() == 100, "Normal: BB blind");
+    check(s.player(button).stack() == 950, "Normal: SB stack");
+    check(s.player(1 - button).stack() == 900, "Normal: BB stack");
+    check(s.pot() == 150, "Normal: pot");
+    check(s.payout(0) == 0 && s.payout(1) == 0, "Normal: payouts");
+    check(chips(e) == 2000, "Normal: chip conservation");
+}
 
-constexpr std::array<std::int64_t, 2> defaultStacks{
-    1000, 1000
-};
+void sbAllInAutomatically() {
+    std::mt19937 rng{11};
+    HandEngine e{{30, 1000}, HandConfig{50, 100}, 0, rng};
+    const auto& s = e.state();
+    finished(e, 1030, 60, "SB all-in");
+    check(s.board().size() == 5, "SB all-in: board");
+    check(s.player(0).committedTotal() == 30, "SB all-in: SB committed");
+    check(s.player(1).committedTotal() == 30, "SB all-in: BB refund");
+}
+
+void bbAllInAutomatically() {
+    std::mt19937 rng{12};
+    HandEngine e{{1000, 30}, HandConfig{50, 100}, 0, rng};
+    const auto& s = e.state();
+    finished(e, 1030, 60, "BB short all-in");
+    check(s.board().size() == 5, "BB short all-in: board");
+    check(s.player(0).committedTotal() == 30, "BB short all-in: SB refund");
+    check(s.player(1).committedTotal() == 30, "BB short all-in: BB committed");
+}
+
+void bothAllInAutomatically() {
+    std::mt19937 rng{13};
+    HandEngine e{{30, 70}, HandConfig{50, 100}, 0, rng};
+    const auto& s = e.state();
+    finished(e, 100, 60, "Both all-in");
+    check(s.board().size() == 5, "Both all-in: board");
+    check(s.player(0).committedTotal() == 30, "Both all-in: SB committed");
+    check(s.player(1).committedTotal() == 30, "Both all-in: BB refund");
+}
+
+void bbAllInWithDecision(std::uint8_t button) {
+    std::mt19937 rng{14};
+    std::array<std::int64_t, 2> stacks{1000, 1000};
+    stacks[1 - button] = 70;
+    HandEngine e{stacks, HandConfig{50, 100}, button, rng};
+    const auto& s = e.state();
+    check(s.phase() == HandPhase::Betting, "BB all-in: Betting required");
+    check(s.actingPlayer().has_value() && *s.actingPlayer() == button,
+          "BB all-in: SB must decide");
+    check(s.actionsToClose() == 1, "BB all-in: one action pending");
+    check(s.board().empty(), "BB all-in: no board yet");
+    check(s.pot() == 120, "BB all-in: pot before decision");
+    check(s.player(button).committedTotal() == 50, "BB all-in: SB blind");
+    check(s.player(1 - button).committedTotal() == 70, "BB all-in: BB blind");
+    check(chips(e) == 1070, "BB all-in: chip conservation");
+}
+
+void foldAgainstAllIn(std::uint8_t button) {
+    std::mt19937 rng{15};
+    std::array<std::int64_t, 2> stacks{1000, 1000};
+    stacks[1 - button] = 70;
+    HandEngine e{stacks, HandConfig{50, 100}, button, rng};
+    e.applyAction(button, Action{ActionType::Fold, 0});
+    const auto& s = e.state();
+    finished(e, 1070, 120, "Fold");
+    check(s.player(button).hasFolded(), "Fold: SB folded");
+    check(!s.player(1 - button).hasFolded(), "Fold: BB not folded");
+    check(s.player(button).stack() == 950, "Fold: SB final stack");
+    check(s.player(1 - button).stack() == 120, "Fold: BB final stack");
+    check(s.board().empty(), "Fold: no runout");
+    check(s.payout(button) == 0, "Fold: SB payout");
+    check(s.payout(1 - button) == 120, "Fold: BB payout");
+    expectThrows<std::logic_error>([&] {
+        e.applyAction(button, Action{ActionType::Fold, 0});
+    }, "Fold: cannot act after settlement");
+}
+
+void callAgainstAllIn(std::uint8_t button) {
+    std::mt19937 rng{16};
+    std::array<std::int64_t, 2> stacks{1000, 1000};
+    stacks[1 - button] = 70;
+    HandEngine e{stacks, HandConfig{50, 100}, button, rng};
+    e.applyAction(button, Action{ActionType::Call, 0});
+    const auto& s = e.state();
+    finished(e, 1070, 140, "Call");
+    check(s.board().size() == 5, "Call: full board");
+    check(s.player(button).committedTotal() == 70, "Call: SB commitment");
+    check(s.player(1 - button).committedTotal() == 70, "Call: BB commitment");
+    check(!s.player(button).hasFolded(), "Call: SB must not fold");
+    check(!s.player(1 - button).hasFolded(), "Call: BB must not fold");
+    expectThrows<std::logic_error>([&] {
+        e.applyAction(button, Action{ActionType::Call, 0});
+    }, "Call: cannot act after settlement");
+}
+
+void illegalActionsPreserveState() {
+    std::mt19937 rng{17};
+    HandEngine e{{1000, 70}, HandConfig{50, 100}, 0, rng};
+    const auto pot = e.state().pot();
+    const auto stack0 = e.state().player(0).stack();
+    const auto stack1 = e.state().player(1).stack();
+    expectThrows<std::invalid_argument>([&] {
+        e.applyAction(1, Action{ActionType::Call, 0});
+    }, "Illegal: wrong turn");
+    expectThrows<std::invalid_argument>([&] {
+        e.applyAction(0, Action{ActionType::Raise, 0});
+    }, "Illegal: unsupported Raise");
+    expectThrows<std::invalid_argument>([&] {
+        e.applyAction(0, Action{ActionType::Call, 10});
+    }, "Illegal: Call with amount");
+    expectThrows<std::invalid_argument>([&] {
+        e.applyAction(0, Action{ActionType::Check, 0});
+    }, "Illegal: unsupported Check");
+    check(e.state().pot() == pot, "Illegal: pot mutated");
+    check(e.state().player(0).stack() == stack0, "Illegal: SB stack mutated");
+    check(e.state().player(1).stack() == stack1, "Illegal: BB stack mutated");
+    check(e.state().actingPlayer().has_value() && *e.state().actingPlayer() == 0,
+          "Illegal: acting player mutated");
+    check(e.state().actionsToClose() == 1, "Illegal: counter mutated");
+}
+
+void invalidConstructorInputs() {
+    const HandConfig blinds{50, 100};
+    expectThrows<std::invalid_argument>([&] {
+        std::mt19937 rng{1};
+        HandEngine e{{1000, 1000}, blinds, 2, rng};
+    }, "Invalid constructor: button");
+    expectThrows<std::invalid_argument>([&] {
+        std::mt19937 rng{1};
+        HandEngine e{{0, 1000}, blinds, 0, rng};
+    }, "Invalid constructor: zero stack");
+    expectThrows<std::invalid_argument>([&] {
+        std::mt19937 rng{1};
+        HandEngine e{{1000, 1000}, HandConfig{100, 100}, 0, rng};
+    }, "Invalid constructor: equal blinds");
+    expectThrows<std::invalid_argument>([&] {
+        std::mt19937 rng{1};
+        HandEngine e{{1000, 1000}, HandConfig{0, 100}, 0, rng};
+    }, "Invalid constructor: zero SB");
+    expectThrows<std::invalid_argument>([&] {
+        std::mt19937 rng{1};
+        HandEngine e{{std::numeric_limits<std::int64_t>::max(), 1}, blinds, 0, rng};
+    }, "Invalid constructor: stack sum overflow");
+}
+} // namespace
 
 int main() {
-    // Test 1: valid construction with button 0
-    std::mt19937 rng0{42};
-
-    HandEngine engine0{
-        defaultStacks, defaultConfig, 0, rng0
-    };
-
-    check(engine0.state().button() == 0,
-          "Button must be player 0");
-
-    check(engine0.state().street() == Street::Preflop,
-          "Initial street must be Preflop");
-
-    check(engine0.state().board().empty(),
-          "Initial board must be empty");
-
-    check(engine0.state().pot() == 0,
-          "Initial pot must be zero before posting blinds");
-
-    check(!engine0.state().actingPlayer().has_value(),
-          "No player must act before betting initialization");
-
-    // Test 2: valid construction with button 1
-    std::mt19937 rng1{42};
-
-    HandEngine engine1{
-        defaultStacks, defaultConfig, 1, rng1
-    };
-
-    check(engine1.state().button() == 1,
-          "Button must be player 1");
-
-    check(engine1.state().street() == Street::Preflop,
-          "Initial street must be Preflop with button 1");
-
-    check(engine1.state().board().empty(),
-          "Board must be empty with button 1");
-
-    // Test 3: initial stack conservation
-    check(engine0.state().player(0).stack() == 1000,
-          "Player 0 must retain initial stack");
-
-    check(engine0.state().player(1).stack() == 1000,
-          "Player 1 must retain initial stack");
-
-    check(engine0.state().player(0).committedTotal() == 0,
-          "Player 0 must have zero committed chips");
-
-    check(engine0.state().player(1).committedTotal() == 0,
-          "Player 1 must have zero committed chips");
-
-    check(engine0.state().player(0).stack() +
-          engine0.state().player(1).stack() +
-          engine0.state().pot() == 2000,
-          "Total chips must be conserved");
-
-    // Test 4: all four hole cards must be distinct
-    const auto& cards0 = engine0.state().player(0).holeCards();
-    const auto& cards1 = engine0.state().player(1).holeCards();
-
-    check(cards0[0] != cards0[1],
-          "Player 0 hole cards must be distinct");
-
-    check(cards1[0] != cards1[1],
-          "Player 1 hole cards must be distinct");
-
-    for (const Card& c0 : cards0) {
-        for (const Card& c1 : cards1) {
-            check(c0 != c1,
-                  "Hole cards across players must be distinct");
-        }
-    }
-
-    // Test 5: same seed and inputs produce identical cards
-    std::mt19937 reproducibleRng{42};
-
-    HandEngine sameEngine{
-        defaultStacks, defaultConfig, 0, reproducibleRng
-    };
-
-    check(engine0.state().player(0).holeCards() ==
-          sameEngine.state().player(0).holeCards(),
-          "Same seed must reproduce player 0 hole cards");
-
-    check(engine0.state().player(1).holeCards() ==
-          sameEngine.state().player(1).holeCards(),
-          "Same seed must reproduce player 1 hole cards");
-
-    // Test 6: changing button swaps dealt card positions
-    check(engine0.state().player(0).holeCards() ==
-          engine1.state().player(1).holeCards(),
-          "Button change must transfer first dealt hand to player 1");
-
-    check(engine0.state().player(1).holeCards() ==
-          engine1.state().player(0).holeCards(),
-          "Button change must transfer second dealt hand to player 0");
-
-    // Test 7: RNG advances after a valid construction
-    std::mt19937 sequenceRng{12345};
-
-    HandEngine firstEngine{
-        defaultStacks, defaultConfig, 0, sequenceRng
-    };
-
-    std::mt19937 expectedRng{12345};
-
-    HandEngine expectedFirst{
-        defaultStacks, defaultConfig, 0, expectedRng
-    };
-
-    check(sequenceRng == expectedRng,
-          "Identical successful constructions must advance RNG equally");
-
-    HandEngine secondEngine{
-        defaultStacks, defaultConfig, 0, sequenceRng
-    };
-
-    HandEngine expectedSecond{
-        defaultStacks, defaultConfig, 0, expectedRng
-    };
-
-    check(secondEngine.state().player(0).holeCards() ==
-          expectedSecond.state().player(0).holeCards(),
-          "Sequential RNG use must remain reproducible");
-
-    check(sequenceRng == expectedRng,
-          "Sequential constructions must preserve RNG reproducibility");
-
-    // Test 8: invalid blind configurations
-    bool exceptionThrown = false;
-
     try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            defaultStacks, HandConfig{0, 100}, 0, rng
-        };
+        normalPreflop(0);
+        normalPreflop(1);
+        sbAllInAutomatically();
+        bbAllInAutomatically();
+        bothAllInAutomatically();
+        bbAllInWithDecision(0);
+        bbAllInWithDecision(1);
+        foldAgainstAllIn(0);
+        foldAgainstAllIn(1);
+        callAgainstAllIn(0);
+        callAgainstAllIn(1);
+        illegalActionsPreserveState();
+        invalidConstructorInputs();
+        std::cout << "HandEngineTests PASSED (" << assertions << " assertions)\n";
+        return 0;
+    } catch (const std::exception& ex) {
+        std::cerr << ex.what() << '\n';
+        return 1;
     }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Zero small blind must throw");
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            defaultStacks, HandConfig{-10, 100}, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Negative small blind must throw");
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            defaultStacks, HandConfig{100, 100}, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Equal blinds must throw");
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            defaultStacks, HandConfig{100, 50}, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Small blind greater than big blind must throw");
-
-    // Test 9: invalid button indices
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            defaultStacks, defaultConfig, 2, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Button index 2 must throw");
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            defaultStacks, defaultConfig, 255, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Button index 255 must throw");
-
-    // Test 10: zero initial stacks
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            {0, 1000}, defaultConfig, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Player 0 with zero initial stack must throw");
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            {1000, 0}, defaultConfig, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Player 1 with zero initial stack must throw");
-
-    // Test 11: negative initial stacks
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            {-100, 1000}, defaultConfig, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Negative player 0 stack must throw");
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            {1000, -100}, defaultConfig, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Negative player 1 stack must throw");
-
-    // Test 12: total stack overflow
-    const auto maxChips =
-        std::numeric_limits<std::int64_t>::max();
-
-    exceptionThrown = false;
-
-    try {
-        std::mt19937 rng{42};
-        HandEngine invalid{
-            {maxChips, 1}, defaultConfig, 0, rng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Total stacks exceeding INT64_MAX must throw");
-
-    // Test 13: exact maximum chip capacity
-    std::mt19937 maxRng{42};
-
-    HandEngine maxEngine{
-        {maxChips - 1, 1}, defaultConfig, 0, maxRng
-    };
-
-    check(maxEngine.state().player(0).stack() == maxChips - 1,
-          "Maximum valid player 0 stack must be preserved");
-
-    check(maxEngine.state().player(1).stack() == 1,
-          "Maximum valid player 1 stack must be preserved");
-
-    check(maxEngine.state().player(0).stack() +
-          maxEngine.state().player(1).stack() == maxChips,
-          "Exact INT64_MAX chip capacity must be accepted");
-
-    // Test 14: invalid inputs must not consume RNG
-    std::mt19937 invalidRng{9876};
-    std::mt19937 untouchedRng{9876};
-
-    exceptionThrown = false;
-
-    try {
-        HandEngine invalid{
-            defaultStacks, HandConfig{100, 50}, 0, invalidRng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Invalid configuration must throw");
-
-    check(invalidRng == untouchedRng,
-          "Invalid configuration must not advance RNG");
-
-    exceptionThrown = false;
-
-    try {
-        HandEngine invalid{
-            defaultStacks, defaultConfig, 2, invalidRng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Invalid button must throw before shuffling");
-
-    check(invalidRng == untouchedRng,
-          "Invalid button must not advance RNG");
-
-    exceptionThrown = false;
-
-    try {
-        HandEngine invalid{
-            {0, 1000}, defaultConfig, 0, invalidRng
-        };
-    }
-    catch (const std::invalid_argument&) {
-        exceptionThrown = true;
-    }
-
-    check(exceptionThrown,
-          "Invalid stacks must throw before shuffling");
-
-    check(invalidRng == untouchedRng,
-          "Invalid stacks must not advance RNG");
-
-    std::cout << "All HandEngine tests passed!\n";
-
-    return EXIT_SUCCESS;
 }

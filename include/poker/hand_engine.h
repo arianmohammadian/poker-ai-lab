@@ -9,6 +9,8 @@
 #include "poker/deck.h"
 #include "poker/hand_config.h"
 #include "poker/hand_state.h"
+#include "poker/hand_evaluator.h"
+#include "poker/action.h"
 
 #include <array>
 #include <cstdint>
@@ -27,10 +29,20 @@ public:
 
     [[nodiscard]] const HandState& state() const noexcept;
 
+    void applyAction(std::uint8_t player, Action action);
+
 private:
     HandConfig config_;
     Deck deck_;
     HandState state_;
+
+    void postBlinds();
+    void initializePreflop();
+    void runoutBoard();
+    void settleShowdown();
+    void resolveAllIn();
+
+    void settleFold();
 };
 
 } // namespace poker

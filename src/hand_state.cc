@@ -25,7 +25,11 @@ HandState::HandState(std::array<PlayerState, 2> players, std::uint8_t button)
       board_(),
       street_(Street::Preflop),
       button_(button),
-      actingPlayer_(std::nullopt)
+      actingPlayer_(std::nullopt),
+      phase_(HandPhase::Setup),
+      actionsToClose_(0),
+      lastFullRaise_(0),
+      payouts_{0, 0}
 {
     if(button > 1) throw invalid_argument("Button must be 0 or 1");
 
@@ -76,8 +80,26 @@ std::uint8_t HandState::button() const noexcept {
 std::optional<std::uint8_t> HandState::actingPlayer() const noexcept {
     return actingPlayer_;
 }
+
 std::int64_t HandState::pot() const noexcept {
-    return players_[0].committedTotal() + players_[1].committedTotal();
+    return players_[0].committedTotal() + players_[1].committedTotal()
+    - payouts_[0] - payouts_[1];
+}
+
+std::int64_t HandState::payout(std::uint8_t index) const {
+    return payouts_.at(index);
+}
+
+HandPhase HandState::phase() const noexcept {
+    return phase_;
+}
+
+std::uint8_t HandState::actionsToClose() const noexcept {
+    return actionsToClose_;
+}
+
+std::int64_t HandState::lastFullRaise() const noexcept {
+    return lastFullRaise_;
 }
 
 } // namespace poker

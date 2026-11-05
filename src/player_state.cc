@@ -1,6 +1,8 @@
 #include "poker/player_state.h"
 
 #include <stdexcept>
+#include <climits>
+#include <limits>
 
 namespace poker {
 
@@ -49,6 +51,23 @@ void PlayerState::commitChips(std::int64_t amount) {
     stack_ -= amount;
     committedStreet_ += amount;
     committedTotal_ += amount;
+}
+
+void PlayerState::refundChips(std::int64_t amount) {
+    if(amount <= 0) throw invalid_argument("Amount must be positive");
+    if (amount > committedStreet_) throw invalid_argument("Refund exceeds current street commitment");
+    stack_ += amount;
+    committedStreet_ -= amount;
+    committedTotal_ -= amount;
+}
+
+void PlayerState::awardChips(std::int64_t amount) {
+    if(amount <= 0) throw invalid_argument("Amount must be positive");
+    
+    const auto maxChips = std::numeric_limits<std::int64_t>::max();
+    if (amount > maxChips - stack_) throw invalid_argument("Award exceeds stack capacity");
+
+    stack_ += amount;
 }
 
 void PlayerState::fold() noexcept {
