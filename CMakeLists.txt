@@ -106,4 +106,10 @@ if(BUILD_TESTING)
     add_executable(hand_engine_test tests/hand_engine_test.cc)
     target_link_libraries(hand_engine_test PRIVATE poker_core)
     add_test(NAME HandEngineTests COMMAND hand_engine_test)
+
+    # Hand Engine stress tests 
+    add_executable(hand_engine_stress_test tests/hand_engine_stress_test.cc)
+    target_link_libraries(hand_engine_stress_test PRIVATE poker_core)
+    add_test(NAME HandEngineStressTests COMMAND hand_engine_stress_test)
+    set_tests_properties(HandEngineStressTests PROPERTIES LABELS "slow")
 endif()
