@@ -7,12 +7,14 @@
 #include "poker/card.h"
 #include "poker/equity_calculator.h"
 
+#include <vector>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <array>
 #include <sstream>
 #include <iomanip>
+#include <cstdint>
 
 namespace {
 
@@ -24,6 +26,26 @@ using poker::EquityResult;
 using poker::EquityCalculator;
 
 using std::invalid_argument;
+
+std::uint64_t parseUnsigned(const std::string& text) {
+    if (text.empty()) {
+        throw std::invalid_argument("Expected a non-negative integer");
+    }
+
+    // Accept only decimal digits
+    for (char c : text) {
+        if (c < '0' || c > '9') {
+            throw std::invalid_argument("Invalid unsigned integer");
+        }
+    }
+
+    // Convert and detect overflow
+    try {
+        return std::stoull(text);
+    } catch (const std::out_of_range&) {
+        throw std::invalid_argument("Integer is out of range");
+    }
+}
 
 Card parseCard(const std::string& text) {
     // 1. Validate text length
@@ -156,13 +178,51 @@ int main() {
             if (!std::getline(std::cin, line)) break;
             auto board = readBoard(line);
 
+            // Read mode
+            std::cout << "\nCalculation mode:\n";
+            std::cout << "  1. Exact enumeration\n";
+            std::cout << "  2. Monte Carlo\n";
+            std::cout << "Choose mode: ";
+
+            std::string mode;
+            if (!std::getline(std::cin, mode))
+                break;
+
             // Calculate exact equity
             poker::EquityInput input{player1, player2, board};
 
-            std::cout << "\nCalculating exact equity...\n";
+            poker::EquityResult result;
 
-            poker::EquityResult result =
-                poker::EquityCalculator::calculateExact(input);
+            std::uint64_t samples = 0;
+            std::uint64_t seed = 0;
+
+            if(mode == "1") {
+                std::cout << "\nCalculating exact equity...\n";
+                result = poker::EquityCalculator::calculateExact(input);
+            } else if (mode == "2") {
+                std::string line;
+
+                // Read number of samples
+                std::cout << "Samples: ";
+                if (!std::getline(std::cin, line)) break;
+
+                samples = parseUnsigned(line);
+
+                // Read random seed
+                std::cout << "Seed: ";
+                if (!std::getline(std::cin, line)) break;
+
+                seed = parseUnsigned(line);
+
+                // Calculate Monte Carlo equity
+                std::cout << "\nRunning Monte Carlo simulation...\n";
+
+                result = EquityCalculator::calculateMonteCarlo(
+                    input, samples, seed
+                );
+            } else {
+                throw std::invalid_argument("Invalid calculation mode");
+            }
 
             // Display results
             std::cout << "\n--------------------------------\n";
@@ -179,6 +239,14 @@ int main() {
             std::cout << "Player 2 wins: " << result.player2Wins << '\n';
             std::cout << "Ties:          " << result.ties << '\n';
             std::cout << "Scenarios:     " << result.total() << '\n';
+
+            std::cout   << "Method:        "
+                        << (mode == "1" ? "Exact" : "Monte Carlo")
+                        << '\n';
+
+            if (mode == "2") {
+                std::cout << "Seed:          " << seed << '\n';
+            }
 
             std::cout << "--------------------------------\n";
 
