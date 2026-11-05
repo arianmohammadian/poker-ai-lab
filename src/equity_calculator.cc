@@ -2,6 +2,8 @@
 #include "poker/hand_evaluator.h"
 
 #include <stdexcept>
+#include <random>
+#include <algorithm>
 
 namespace poker {
 
@@ -79,7 +81,8 @@ void checkAndMark(const Card& card, std::array<bool, 52>& seen) {
     int id = cardId(card);
 
     if(seen[id]) throw invalid_argument("Duplicated cards");
-    else seen[id] = true;
+    
+    seen[id] = true;
 }
 
 void validateInput(const EquityInput& input) {
@@ -142,6 +145,58 @@ EquityResult EquityCalculator::calculateExact(const EquityInput& input) {
 
     enumerateBoards(input, availableCards(input), currentBoard, 0, result);
 
+    return result;
+}
+
+EquityResult EquityCalculator::calculateMonteCarlo(
+    const EquityInput& input,
+    std::uint64_t samples,
+    std::uint64_t seed
+) {
+    validateInput(input);
+
+    if (samples == 0)
+        throw std::invalid_argument("Sample count must be positive");
+
+    std::mt19937_64 rng(seed);
+
+    std::vector<Card> available = availableCards(input);
+
+    const std::size_t missing = 5 - input.board.size();
+
+    EquityResult result;
+
+    std::vector<Card> currentBoard = input.board;
+    currentBoard.reserve(5);
+
+    for(std::uint64_t t = 0; t < samples; t++) {
+        for (std::size_t i = 0; i < missing; ++i) {
+            std::uniform_int_distribution<std::size_t> dist(
+                i, available.size() - 1
+            );
+
+            std::size_t j = dist(rng);
+
+            std::swap(available[i], available[j]);
+
+            currentBoard.push_back(available[i]);
+        }
+
+        const std::array<Card, 5> completeBoard = {
+            currentBoard[0],
+            currentBoard[1],
+            currentBoard[2],
+            currentBoard[3],
+            currentBoard[4]
+        };
+
+        evaluateShowdown(input.player1, input.player2, completeBoard, result);
+
+        for (std::size_t i = 0; i < missing; ++i) {
+            currentBoard.pop_back();
+        }
+    }
+    
     return result;
 }
 

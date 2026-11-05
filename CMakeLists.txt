@@ -72,6 +72,11 @@ if(BUILD_TESTING)
     add_test(NAME equity_preflop_test COMMAND equity_preflop_test)
     set_tests_properties(equity_preflop_test PROPERTIES LABELS "slow")
 
+    # Equity Calculator Monte Carlo tests 
+    add_executable(equity_monte_carlo_test tests/equity_monte_carlo_test.cc)
+    target_link_libraries(equity_monte_carlo_test PRIVATE poker_core)
+    add_test(NAME equity_monte_carlo_test COMMAND equity_monte_carlo_test)
+
     # CLI Poker Equity tests 
     add_executable(poker_equity apps/poker_equity.cc)
     target_link_libraries(poker_equity PRIVATE poker_core)
