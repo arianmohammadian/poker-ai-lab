@@ -15,7 +15,12 @@
 
 namespace poker {
 
+class HandEngine;
+
 class HandState {
+    friend class HandEngine;
+
+    
 public:
     HandState(std::array<PlayerState, 2> players, std::uint8_t button);
 

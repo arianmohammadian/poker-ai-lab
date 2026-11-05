@@ -19,6 +19,7 @@ add_library(poker_core
     src/equity_calculator.cc
     src/player_state.cc
     src/hand_state.cc
+    src/hand_engine.cc
     apps/poker_equity.cc
 )
 
@@ -100,4 +101,9 @@ if(BUILD_TESTING)
     add_executable(hand_state_test tests/hand_state_test.cc)
     target_link_libraries(hand_state_test PRIVATE poker_core)
     add_test(NAME HandStateTests COMMAND hand_state_test)
+
+    # Hand Engine tests 
+    add_executable(hand_engine_test tests/hand_engine_test.cc)
+    target_link_libraries(hand_engine_test PRIVATE poker_core)
+    add_test(NAME HandEngineTests COMMAND hand_engine_test)
 endif()
