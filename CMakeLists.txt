@@ -17,6 +17,7 @@ add_library(poker_core
     src/hand_rank.cc
     src/hand_evaluator.cc
     src/equity_calculator.cc
+    src/player_state.cc
     apps/poker_equity.cc
 )
 
@@ -88,4 +89,9 @@ if(BUILD_TESTING)
             "-DCLI_EXE=$<TARGET_FILE:poker_equity>"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/equity_cli_test.cmake"
     )
+
+    # Player State tests
+    add_executable(player_state_test tests/player_state_test.cc)
+    target_link_libraries(player_state_test PRIVATE poker_core)
+    add_test(NAME player_state_test COMMAND player_state_test)
 endif()
