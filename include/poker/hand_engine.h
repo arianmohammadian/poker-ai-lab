@@ -41,8 +41,9 @@ private:
     void runoutBoard();
     void settleShowdown();
     void resolveAllIn();
-
     void settleFold();
+    void advanceStreet();
+    void dealNextStreet();
 };
 
 } // namespace poker

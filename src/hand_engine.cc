@@ -109,87 +109,118 @@ void HandEngine::postBlinds() {
 }
 
 void HandEngine::applyAction(std::uint8_t player, Action action) {
-    if (state_.phase_ != HandPhase::Betting) {
+    if (state_.phase_ != HandPhase::Betting)
         throw std::logic_error("Hand is not accepting actions");
-    }
-
-    if (!state_.actingPlayer_.has_value() ||
-        state_.actingPlayer_.value() != player) {
+    if (!state_.actingPlayer_.has_value() || *state_.actingPlayer_ != player)
         throw std::invalid_argument("It is not this player's turn");
-    }
-
-    if (action.amount != 0) {
-        throw std::invalid_argument(
-            "Fold and Call actions must have amount zero"
-        );
-    }
+    if (state_.actionsToClose_ == 0)
+        throw std::logic_error("No betting actions pending");
 
     PlayerState& current = state_.players_[player];
     PlayerState& opponent = state_.players_[1 - player];
-
-    if (current.hasFolded() || current.isAllIn()) {
+    if (current.hasFolded() || current.isAllIn())
         throw std::logic_error("Player cannot act");
+
+    const std::int64_t mine = current.committedStreet();
+    const std::int64_t theirs = opponent.committedStreet();
+    if (mine > theirs)
+        throw std::logic_error("Unmatched excess commitment while acting");
+    const std::int64_t toCall = theirs - mine;
+
+    if (action.type == ActionType::Fold ||
+        action.type == ActionType::Check ||
+        action.type == ActionType::Call) {
+        if (action.amount != 0)
+            throw std::invalid_argument("Fold, Check and Call require amount 0");
     }
 
+    // Only called AFTER validating and committing a legal non-aggressive action.
+    auto completePassiveAction = [&]() {
+        --state_.actionsToClose_;
+        if (state_.actionsToClose_ == 0 ||
+            current.isAllIn() || opponent.isAllIn()) {
+            state_.actionsToClose_ = 0;
+            state_.actingPlayer_ = std::nullopt;
+            advanceStreet();
+        } else {
+            state_.actingPlayer_ = static_cast<std::uint8_t>(1 - player);
+        }
+    };
+
     switch (action.type) {
-        case ActionType::Fold: {
+        case ActionType::Fold:
             current.fold();
             settleFold();
             return;
-        }
+
+        case ActionType::Check:
+            if (toCall != 0)
+                throw std::invalid_argument("Cannot check facing a bet");
+            completePassiveAction();
+            return;
 
         case ActionType::Call: {
-            const std::int64_t toCall =
-                opponent.committedStreet() -
-                current.committedStreet();
-
-            if (toCall <= 0) {
-                throw std::invalid_argument(
-                    "No outstanding bet to call"
-                );
-            }
-
-            if (toCall > current.stack()) {
-                throw std::logic_error(
-                    "Insufficient stack for this Call"
-                );
-            }
-
-            if (state_.actionsToClose_ == 0) {
-                throw std::logic_error(
-                    "No betting actions should be pending"
-                );
-            }
-
-            current.commitChips(toCall);
-
-            --state_.actionsToClose_;
-
-            if (opponent.isAllIn()) {
-                state_.actionsToClose_ = 0;
-                state_.actingPlayer_ = std::nullopt;
-                resolveAllIn();
-                return;
-            }
-
-            if (state_.actionsToClose_ == 0) {
-                state_.actingPlayer_ = std::nullopt;
-
-                // TODO: Advance to the next street.
-                // Not implemented yet.
-            } else {
-                state_.actingPlayer_ = 1 - player;
-            }
-
+            if (toCall == 0)
+                throw std::invalid_argument("Nothing to call; use Check");
+            const std::int64_t paid = std::min(toCall, current.stack());
+            // current.stack() > 0 because current.isAllIn() was rejected above.
+            current.commitChips(paid);
+            completePassiveAction();
             return;
         }
 
-        default:
-            throw std::invalid_argument(
-                "Action type is not implemented yet"
-            );
+        case ActionType::Bet: {
+            if (mine != 0 || theirs != 0)
+                throw std::invalid_argument("Bet requires an unopened street");
+            if (opponent.isAllIn())
+                throw std::invalid_argument("Cannot bet against an all-in opponent");
+            if (action.amount <= 0 || action.amount > current.stack())
+                throw std::invalid_argument("Bet exceeds stack or is nonpositive");
+            // Below-BB opening bets are legal only when truly all-in.
+            if (action.amount < config_.bigBlind && action.amount != current.stack())
+                throw std::invalid_argument("Bet below the minimum without all-in");
+
+            current.commitChips(action.amount);
+            // An all-in short opening bet is NOT a full raise increment.
+            if (action.amount >= config_.bigBlind)
+                state_.lastFullRaise_ = action.amount;
+            state_.actionsToClose_ = 1;
+            state_.actingPlayer_ = static_cast<std::uint8_t>(1 - player);
+            return;
+        }
+
+        case ActionType::Raise: {
+            if (mine == 0 && theirs == 0)
+                throw std::invalid_argument("Use Bet to open betting");
+            if (opponent.isAllIn())
+                throw std::invalid_argument("Cannot raise an all-in opponent");
+            // Raise.amount is the player's TARGET street commitment.
+            // Calculate with subtraction to avoid overflow of mine + stack.
+            if (action.amount <= theirs || action.amount <= mine)
+                throw std::invalid_argument("Raise must exceed the current bet");
+            const std::int64_t additional = action.amount - mine;
+            if (additional > current.stack())
+                throw std::invalid_argument("Raise exceeds player's stack");
+            const std::int64_t increment = action.amount - theirs;
+            const bool allIn = additional == current.stack();
+            const bool fullRaise = increment >= state_.lastFullRaise_;
+            if (!fullRaise && !allIn)
+                throw std::invalid_argument("Raise below minimum without all-in");
+
+            current.commitChips(additional);
+            if (fullRaise)
+                state_.lastFullRaise_ = increment;
+            // In HU, if the raiser is all-in, the other player can only
+            // fold/call: it is impossible to re-raise against a single all-in.
+            state_.actionsToClose_ = 1;
+            state_.actingPlayer_ = static_cast<std::uint8_t>(1 - player);
+            return;
+        }
     }
+
+    throw std::invalid_argument("Unknown action type");
 }
+
 
 void HandEngine::initializePreflop() {
     const auto sb = state_.button_;
@@ -239,26 +270,31 @@ void HandEngine::initializePreflop() {
 }
 
 void HandEngine::runoutBoard() {
-    const auto size = state_.board_.size();
-
-    if (size != 0 && size != 3 && size != 4 && size != 5) {
-        throw std::logic_error("Invalid board size for runout");
+    while (state_.board_.size() < 5) {
+        switch (state_.board_.size()) {
+            case 0:
+                static_cast<void>(deck_.draw()); // Burn before flop
+                for (int i = 0; i < 3; ++i)
+                    state_.board_.push_back(deck_.draw());
+                state_.street_ = Street::Flop;
+                break;
+            case 3:
+                static_cast<void>(deck_.draw()); // Burn before turn
+                state_.board_.push_back(deck_.draw());
+                state_.street_ = Street::Turn;
+                break;
+            case 4:
+                static_cast<void>(deck_.draw()); // Burn before river
+                state_.board_.push_back(deck_.draw());
+                state_.street_ = Street::River;
+                break;
+            default:
+                throw std::logic_error("Invalid community-card count");
+        }
     }
-
-    if(state_.board_.size() == 0) {
-        (void)deck_.draw();
-        for(int i = 0; i < 3; i++) state_.board_.push_back(deck_.draw());
-    } 
-    
-    if(state_.board_.size() == 3) {
-        (void)deck_.draw();
-        state_.board_.push_back(deck_.draw());
-    } 
-    
-    if(state_.board_.size() == 4) {
-        (void)deck_.draw();
-        state_.board_.push_back(deck_.draw());
-    }
+    if (state_.board_.size() != 5)
+        throw std::logic_error("Invalid community-card count");
+    state_.street_ = Street::River;
 }
 
 void HandEngine::settleShowdown() {
@@ -378,6 +414,63 @@ void HandEngine::settleFold() {
     state_.phase_ = HandPhase::Finished;
     state_.actingPlayer_ = std::nullopt;
     state_.actionsToClose_ = 0;
+}
+
+void HandEngine::advanceStreet() {
+    if (state_.phase_ != HandPhase::Betting || state_.actionsToClose_ != 0 ||
+        state_.actingPlayer_.has_value())
+        throw std::logic_error("Cannot advance while betting is open");
+
+    PlayerState& p0 = state_.players_[0];
+    PlayerState& p1 = state_.players_[1];
+    if (p0.hasFolded() || p1.hasFolded())
+        throw std::logic_error("Cannot advance after fold");
+
+    if (p0.isAllIn() || p1.isAllIn()) {
+        resolveAllIn();
+        return;
+    }
+
+    if (p0.committedStreet() != p1.committedStreet())
+        throw std::logic_error("Unmatched bets at closed round");
+
+    if (state_.street_ == Street::River) {
+        settleShowdown();
+        return;
+    }
+
+    dealNextStreet();
+    p0.beginNewStreet();
+    p1.beginNewStreet();
+    state_.actingPlayer_ = static_cast<std::uint8_t>(1 - state_.button_);
+    state_.actionsToClose_ = 2;
+    state_.lastFullRaise_ = config_.bigBlind;
+}
+
+void HandEngine::dealNextStreet() {
+    if (state_.phase_ != HandPhase::Betting)
+        throw std::logic_error("Cannot deal outside betting phase");
+
+    switch (state_.street_) {
+        case Street::Preflop:
+            static_cast<void>(deck_.draw()); // Burn
+            for (int i = 0; i < 3; ++i)
+                state_.board_.push_back(deck_.draw());
+            state_.street_ = Street::Flop;
+            break;
+        case Street::Flop:
+            static_cast<void>(deck_.draw()); // Burn
+            state_.board_.push_back(deck_.draw());
+            state_.street_ = Street::Turn;
+            break;
+        case Street::Turn:
+            static_cast<void>(deck_.draw()); // Burn
+            state_.board_.push_back(deck_.draw());
+            state_.street_ = Street::River;
+            break;
+        case Street::River:
+            throw std::logic_error("Cannot deal beyond river");
+    }
 }
 
 } // namespace poker

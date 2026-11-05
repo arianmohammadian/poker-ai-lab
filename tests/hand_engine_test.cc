@@ -206,6 +206,147 @@ void invalidConstructorInputs() {
         HandEngine e{{std::numeric_limits<std::int64_t>::max(), 1}, blinds, 0, rng};
     }, "Invalid constructor: stack sum overflow");
 }
+// ADD these functions inside the anonymous namespace in hand_engine_test.cc,
+// BEFORE the '} // namespace'. Then call them from main().
+
+void fullHandChecksToShowdown(std::uint8_t button) {
+    std::mt19937 rng{123};
+    HandEngine e{{1000, 1000}, HandConfig{50, 100}, button, rng};
+    const std::uint8_t bb = 1 - button;
+    e.applyAction(button, {ActionType::Call, 0});
+    e.applyAction(bb, {ActionType::Check, 0});
+    check(e.state().street() == poker::Street::Flop, "Flop not reached");
+    check(e.state().board().size() == 3, "Flop must have 3 cards");
+    check(e.state().actingPlayer() == bb, "BB first on flop");
+    check(e.state().pot() == 200, "Flop pot must be 200");
+    for (auto street : {poker::Street::Flop, poker::Street::Turn,
+                        poker::Street::River}) {
+        check(e.state().street() == street, "Unexpected betting street");
+        e.applyAction(bb, {ActionType::Check, 0});
+        e.applyAction(button, {ActionType::Check, 0});
+    }
+    finished(e, 2000, 200, "Check-down to river");
+    check(e.state().board().size() == 5, "River must contain five cards");
+}
+
+void betCallAndRaiseSequence() {
+    std::mt19937 rng{124};
+    HandEngine e{{1000, 1000}, HandConfig{50, 100}, 0, rng};
+    e.applyAction(0, {ActionType::Raise, 300}); // SB raises TO 300
+    check(e.state().lastFullRaise() == 200, "Raise increment must be 200");
+    check(e.state().pot() == 400, "Pot after raise must be 400");
+    e.applyAction(1, {ActionType::Call, 0});
+    check(e.state().street() == poker::Street::Flop, "Raise/call to flop");
+    check(e.state().pot() == 600, "Pot must be 600 after raise/call");
+    e.applyAction(1, {ActionType::Bet, 100});
+    e.applyAction(0, {ActionType::Raise, 300}); // 200 increment
+    check(e.state().lastFullRaise() == 200, "Raise should update minimum increment");
+    e.applyAction(1, {ActionType::Call, 0});
+    check(e.state().street() == poker::Street::Turn, "Bet/raise/call to turn");
+    check(e.state().pot() == 1200, "Pot must be 1200 on turn");
+    e.applyAction(1, {ActionType::Check, 0});
+    e.applyAction(0, {ActionType::Check, 0});
+    e.applyAction(1, {ActionType::Check, 0});
+    e.applyAction(0, {ActionType::Check, 0});
+    finished(e, 2000, 1200, "Raise/call hand");
+}
+
+void bbRaisesAfterSbLimp() {
+    std::mt19937 rng{125};
+    HandEngine e{{1000, 1000}, HandConfig{50, 100}, 0, rng};
+    e.applyAction(0, {ActionType::Call, 0});
+    e.applyAction(1, {ActionType::Raise, 300}); // Legal BB option
+    check(e.state().actingPlayer() == 0, "SB must respond to BB raise");
+    check(e.state().actionsToClose() == 1, "One response outstanding");
+    e.applyAction(0, {ActionType::Fold, 0});
+    finished(e, 2000, 400, "BB raise after limp + fold");
+}
+
+void partialAllInCallAndRefund() {
+    std::mt19937 rng{126};
+    HandEngine e{{350, 1000}, HandConfig{50, 100}, 0, rng};
+    e.applyAction(0, {ActionType::Raise, 350}); // SB all-in to 350
+    e.applyAction(1, {ActionType::Call, 0});
+    finished(e, 1350, 700, "All-in raise called");
+    check(e.state().board().size() == 5, "All-in runout must finish board");
+}
+
+void shortCallBelowOwedAmount() {
+    std::mt19937 rng{127};
+    HandEngine e{{200, 1000}, HandConfig{50, 100}, 0, rng};
+    // BB can only receive an all-in raise if SB has more than 100.
+    // SB pushes 200; BB calls normally: tests all-in resolution.
+    e.applyAction(0, {ActionType::Raise, 200});
+    e.applyAction(1, {ActionType::Call, 0});
+    finished(e, 1200, 400, "Short stack all-in raise");
+}
+
+void smallAllInOpeningBet() {
+    std::mt19937 rng{128};
+    HandEngine e{{1000, 150}, HandConfig{50, 100}, 0, rng};
+    e.applyAction(0, {ActionType::Call, 0});
+    e.applyAction(1, {ActionType::Check, 0});
+    // BB has 50 left, can bet this amount all-in on flop (<BB).
+    e.applyAction(1, {ActionType::Bet, 50});
+    check(e.state().actingPlayer() == 0, "SB must respond to small all-in bet");
+    e.applyAction(0, {ActionType::Call, 0});
+    finished(e, 1150, 300, "Small all-in opening bet");
+}
+
+void rejectedRaiseMustNotChangeChips() {
+    std::mt19937 rng{129};
+    HandEngine e{{1000, 1000}, HandConfig{50, 100}, 0, rng};
+    const auto pot = e.state().pot();
+    const auto stack = e.state().player(0).stack();
+    expectThrows<std::invalid_argument>([&] {
+        e.applyAction(0, {ActionType::Raise, 150}); // min raise to 200
+    }, "Illegal below-minimum non-all-in raise must be rejected");
+    expectThrows<std::invalid_argument>([&] {
+        e.applyAction(0, {ActionType::Bet, 100}); // already opened by BB
+    }, "Bet cannot be used to raise a blind");
+    check(e.state().pot() == pot, "Rejected raise must not change pot");
+    check(e.state().player(0).stack() == stack, "Rejected raise must not change stack");
+    check(e.state().actingPlayer() == 0, "Rejected raise must preserve turn");
+}
+
+
+void partialCallAllInAfterLargeRaise() {
+    std::mt19937 rng{130};
+    HandEngine e{{1000, 200}, HandConfig{50, 100}, 0, rng};
+    e.applyAction(0, {ActionType::Raise, 500});
+    // BB has only 100 left and cannot cover the additional 400.
+    e.applyAction(1, {ActionType::Call, 0});
+    finished(e, 1200, 400, "Partial all-in call");
+    check(e.state().player(0).committedTotal() == 200,
+          "Excess 300 chips must be refunded to raiser");
+    check(e.state().player(1).committedTotal() == 200,
+          "Short caller must put in their entire stack");
+    check(e.state().board().size() == 5, "Partial all-in must run out board");
+}
+
+void incompleteAllInRaiseIsLegal() {
+    std::mt19937 rng{131};
+    HandEngine e{{175, 1000}, HandConfig{50, 100}, 0, rng};
+    // SB raises all-in to 175. The increment is only 75 (< BB=100).
+    e.applyAction(0, {ActionType::Raise, 175});
+    check(e.state().lastFullRaise() == 100,
+          "Incomplete all-in must not update last full raise size");
+    e.applyAction(1, {ActionType::Call, 0});
+    finished(e, 1175, 350, "Incomplete all-in raise");
+}
+
+void checkThenBetAndFold() {
+    std::mt19937 rng{132};
+    HandEngine e{{1000, 1000}, HandConfig{50, 100}, 0, rng};
+    e.applyAction(0, {ActionType::Call, 0});
+    e.applyAction(1, {ActionType::Check, 0});
+    e.applyAction(1, {ActionType::Check, 0});
+    e.applyAction(0, {ActionType::Bet, 150});
+    check(e.state().actingPlayer() == 1, "Check/bet must return turn to BB");
+    e.applyAction(1, {ActionType::Fold, 0});
+    finished(e, 2000, 350, "Check/bet/fold");
+}
+
 } // namespace
 
 int main() {
@@ -223,6 +364,17 @@ int main() {
         callAgainstAllIn(1);
         illegalActionsPreserveState();
         invalidConstructorInputs();
+        fullHandChecksToShowdown(0);
+        fullHandChecksToShowdown(1);
+        betCallAndRaiseSequence();
+        bbRaisesAfterSbLimp();
+        partialAllInCallAndRefund();
+        shortCallBelowOwedAmount();
+        smallAllInOpeningBet();
+        rejectedRaiseMustNotChangeChips();
+        partialCallAllInAfterLargeRaise();
+        incompleteAllInRaiseIsLegal();
+        checkThenBetAndFold();
         std::cout << "HandEngineTests PASSED (" << assertions << " assertions)\n";
         return 0;
     } catch (const std::exception& ex) {
