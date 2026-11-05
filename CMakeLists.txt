@@ -17,6 +17,7 @@ add_library(poker_core
     src/hand_rank.cc
     src/hand_evaluator.cc
     src/equity_calculator.cc
+    apps/poker_equity.cc
 )
 
 target_include_directories(poker_core
@@ -70,4 +71,8 @@ if(BUILD_TESTING)
     target_link_libraries(equity_preflop_test PRIVATE poker_core)
     add_test(NAME equity_preflop_test COMMAND equity_preflop_test)
     set_tests_properties(equity_preflop_test PROPERTIES LABELS "slow")
+
+    # CLI Poker Equity tests 
+    add_executable(poker_equity apps/poker_equity.cc)
+    target_link_libraries(poker_equity PRIVATE poker_core)
 endif()
