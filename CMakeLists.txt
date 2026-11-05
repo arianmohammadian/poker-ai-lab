@@ -16,6 +16,7 @@ add_library(poker_core
     src/deck.cc
     src/hand_rank.cc
     src/hand_evaluator.cc
+    src/equity_calculator.cc
 )
 
 target_include_directories(poker_core
@@ -58,4 +59,15 @@ if(BUILD_TESTING)
     add_executable(equity_input_test tests/equity_input_test.cc)
     target_link_libraries(equity_input_test PRIVATE poker_core)
     add_test(NAME equity_input_test COMMAND equity_input_test)
+
+    # Equity Calculator tests (flop, turn and river)
+    add_executable(equity_calculator_test tests/equity_calculator_test.cc)
+    target_link_libraries(equity_calculator_test PRIVATE poker_core)
+    add_test(NAME equity_calculator_test COMMAND equity_calculator_test)
+
+    # Equity Calculator tests (preflop)
+    add_executable(equity_preflop_test tests/equity_preflop_test.cc)
+    target_link_libraries(equity_preflop_test PRIVATE poker_core)
+    add_test(NAME equity_preflop_test COMMAND equity_preflop_test)
+    set_tests_properties(equity_preflop_test PROPERTIES LABELS "slow")
 endif()
