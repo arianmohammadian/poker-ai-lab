@@ -80,4 +80,12 @@ if(BUILD_TESTING)
     # CLI Poker Equity tests 
     add_executable(poker_equity apps/poker_equity.cc)
     target_link_libraries(poker_equity PRIVATE poker_core)
+
+    # CLI Poker Equity Monte Carlo tests 
+    add_test(
+        NAME equity_cli_test
+        COMMAND ${CMAKE_COMMAND}
+            "-DCLI_EXE=$<TARGET_FILE:poker_equity>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/equity_cli_test.cmake"
+    )
 endif()
