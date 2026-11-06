@@ -1,16 +1,20 @@
 
 /**
  * @file poker_hand_viewer.cc
- * @brief Displays an autonomous Heads-Up NLHE hand in the terminal.
+ * @brief Displays autonomous Heads-Up NLHE games in the terminal.
  * @author Arian Mohammadian
  */
 
-#include "poker/hand_engine.h"
+#include "poker/game_engine.h"
 #include "poker/random_agent.h"
+#include "poker/hand_evaluator.h"
+#include "poker/hand_rank.h"
+#include "poker/hand_category.h"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <random>
 #include <stdexcept>
@@ -18,10 +22,13 @@
 using poker::Action;
 using poker::ActionType;
 using poker::Card;
+using poker::GameEngine;
 using poker::HandConfig;
-using poker::HandEngine;
 using poker::HandPhase;
 using poker::HandState;
+using poker::HandEvaluator;
+using poker::HandRank;
+using poker::HandCategory;
 using poker::RandomAgent;
 using poker::Rank;
 using poker::Street;
@@ -69,16 +76,16 @@ void printCard(const Card& card) {
               << suitToChar(card.suit());
 }
 
-void printBoard(const HandState& state) {
-    for (const Card& card : state.board()) {
-        printCard(card);
-        std::cout << ' ';
+void printCards(
+    const std::vector<Card>& cards,
+    std::size_t first,
+    std::size_t last
+) {
+    for (std::size_t i = first; i < last; ++i) {
+        if (i > first) std::cout << ' ';
+        printCard(cards[i]);
     }
 }
-
-// --------------------------------------------------
-// Hand presentation
-// --------------------------------------------------
 
 const char* streetName(Street street) {
     switch (street) {
@@ -91,13 +98,27 @@ const char* streetName(Street street) {
     throw std::invalid_argument("Invalid street");
 }
 
+// --------------------------------------------------
+// Hand presentation
+// --------------------------------------------------
+
 void printInitialState(
     const HandState& state,
-    const HandConfig& config
+    const HandConfig& config,
+    std::uint64_t handNumber,
+    const std::array<std::int64_t, 2>& startingStacks
 ) {
+    std::cout << "\n========== HAND #"
+              << handNumber
+              << " ==========\n";
+
+    std::cout << "Button: Player "
+              << static_cast<int>(state.button())
+              << '\n';
+
     std::cout << "Blinds: "
               << config.smallBlind << '/'
-              << config.bigBlind << "\n";
+              << config.bigBlind << '\n';
 
     for (int i = 0; i < 2; ++i) {
         std::cout << "Player " << i << ": ";
@@ -108,23 +129,29 @@ void printInitialState(
         std::cout << ' ';
         printCard(cards[1]);
 
-        std::cout << "    Stack: "
-                  << state.player(i).stack()
+        std::cout << "    Starting stack: "
+                  << startingStacks[i]
                   << '\n';
     }
-
-    std::cout << '\n';
 }
 
 void printStreet(const HandState& state) {
-    std::cout << "\n[" << streetName(state.street()) << "]";
+    std::cout << "\n["
+              << streetName(state.street())
+              << "]";
 
     if (!state.board().empty()) {
         std::cout << ' ';
-        printBoard(state);
+        printCards(
+            state.board(),
+            0,
+            state.board().size()
+        );
     }
 
-    std::cout << "\nPot: " << state.pot() << '\n';
+    std::cout << "\nPot: "
+              << state.pot()
+              << '\n';
 
     if (state.street() != Street::Preflop) {
         std::cout << "Stacks: P0="
@@ -132,6 +159,38 @@ void printStreet(const HandState& state) {
                   << " | P1="
                   << state.player(1).stack()
                   << '\n';
+    }
+}
+
+// Shows cards dealt automatically after the last
+// betting action, without repeating earlier streets.
+void printRunout(
+    const HandState& state,
+    std::size_t previousBoardSize
+) {
+    const auto& board = state.board();
+
+    if (board.size() <= previousBoardSize)
+        return;
+
+    std::cout << "\n[ALL-IN RUNOUT]\n";
+
+    if (previousBoardSize < 3 && board.size() >= 3) {
+        std::cout << "Flop: ";
+        printCards(board, 0, 3);
+        std::cout << '\n';
+    }
+
+    if (previousBoardSize < 4 && board.size() >= 4) {
+        std::cout << "Turn: ";
+        printCard(board[3]);
+        std::cout << '\n';
+    }
+
+    if (previousBoardSize < 5 && board.size() >= 5) {
+        std::cout << "River: ";
+        printCard(board[4]);
+        std::cout << '\n';
     }
 }
 
@@ -174,40 +233,255 @@ void printAction(
     std::cout << '\n';
 }
 
-void printResult(
+
+const char* rankName(std::uint8_t rank) {
+    switch (rank) {
+        case 2:  return "Twos";
+        case 3:  return "Threes";
+        case 4:  return "Fours";
+        case 5:  return "Fives";
+        case 6:  return "Sixes";
+        case 7:  return "Sevens";
+        case 8:  return "Eights";
+        case 9:  return "Nines";
+        case 10: return "Tens";
+        case 11: return "Jacks";
+        case 12: return "Queens";
+        case 13: return "Kings";
+        case 14: return "Aces";
+    }
+
+    throw std::invalid_argument("Invalid rank");
+}
+
+const char* categoryName(HandCategory category) {
+    switch (category) {
+        case HandCategory::HighCard:     return "High Card";
+        case HandCategory::OnePair:      return "One Pair";
+        case HandCategory::TwoPair:      return "Two Pair";
+        case HandCategory::ThreeOfAKind: return "Three of a Kind";
+        case HandCategory::Straight:     return "Straight";
+        case HandCategory::Flush:        return "Flush";
+        case HandCategory::FullHouse:    return "Full House";
+        case HandCategory::FourOfAKind:  return "Four of a Kind";
+        case HandCategory::StraightFlush:return "Straight Flush";
+    }
+
+    throw std::invalid_argument("Invalid hand category");
+}
+
+void printHandRank(const HandRank& rank) {
+    const auto category = rank.category();
+    const auto& kickers = rank.kickers();
+
+    std::cout << categoryName(category);
+
+    switch (category) {
+        case HandCategory::OnePair:
+        case HandCategory::ThreeOfAKind:
+        case HandCategory::FourOfAKind:
+            std::cout << " (" << rankName(kickers[0]) << ")";
+            break;
+
+        case HandCategory::TwoPair:
+            std::cout << " (" << rankName(kickers[0])
+                      << " and " << rankName(kickers[1]) << ")";
+            break;
+
+        case HandCategory::FullHouse:
+            std::cout << " (" << rankName(kickers[0])
+                      << " full of " << rankName(kickers[1]) << ")";
+            break;
+
+        case HandCategory::Straight:
+        case HandCategory::StraightFlush:
+            std::cout << " ("
+                      << (kickers[0] == 5 ? "Five" :
+                          kickers[0] == 14 ? "Ace" :
+                          rankName(kickers[0]))
+                      << "-high)";
+            break;
+
+        case HandCategory::HighCard:
+        case HandCategory::Flush:
+            std::cout << " (" << rankName(kickers[0]) << "-high)";
+            break;
+    }
+}
+
+HandRank evaluatePlayer(const HandState& state, std::uint8_t player) {
+    const auto& hole = state.player(player).holeCards();
+    const auto& board = state.board();
+
+    if (board.size() != 5) {
+        throw std::logic_error("Showdown requires five community cards");
+    }
+
+    std::array<Card, 7> cards{
+        hole[0], hole[1],
+        board[0], board[1], board[2], board[3], board[4]
+    };
+
+    return HandEvaluator::evaluate(cards);
+}
+
+
+// --------------------------------------------------
+// Results
+// --------------------------------------------------
+
+
+void printHandResult(
     const HandState& state,
-    const std::array<std::int64_t, 2>& initialStacks
+    const std::array<std::int64_t, 2>& startingStacks
 ) {
-    std::cout << "\n[RESULT]\n";
+    std::cout << "\n[HAND RESULT]\n";
 
-    const std::int64_t final0 = state.player(0).stack();
-    const std::int64_t final1 = state.player(1).stack();
+    // Print the community cards dealt during the hand.
+    std::cout << "Board: ";
 
-    const std::int64_t net0 = final0 - initialStacks[0];
-    const std::int64_t net1 = final1 - initialStacks[1];
-
-    // Show final board if the hand reached an automatic showdown.
-    if (state.board().size() == 5) {
-        std::cout << "Final board: ";
-        printBoard(state);
-        std::cout << '\n';
-    }
-
-    if (net0 > 0) {
-        std::cout << "Player 0 wins (net +"
-                  << net0 << " chips)\n";
-    } else if (net1 > 0) {
-        std::cout << "Player 1 wins (net +"
-                  << net1 << " chips)\n";
+    if (state.board().empty()) {
+        std::cout << "(no community cards)";
     } else {
-        std::cout << "Hand ends with no net chip transfer\n";
+        printCards(state.board(), 0, state.board().size());
     }
 
-    std::cout << "Player 0 final stack: "
-              << final0 << '\n';
+    std::cout << "\n\n";
 
-    std::cout << "Player 1 final stack: "
-              << final1 << '\n';
+    const bool folded0 = state.player(0).hasFolded();
+    const bool folded1 = state.player(1).hasFolded();
+    const bool endedByFold = folded0 || folded1;
+
+    // --------------------------------------------------
+    // Fold
+    // --------------------------------------------------
+
+    if (endedByFold) {
+        const int winner = folded0 ? 1 : 0;
+
+        for (int i = 0; i < 2; ++i) {
+            const auto& hole = state.player(i).holeCards();
+
+            std::cout << "Player " << i << ": ";
+
+            printCard(hole[0]);
+            std::cout << ' ';
+            printCard(hole[1]);
+
+            std::cout << " -> ";
+
+            if (state.player(i).hasFolded()) {
+                std::cout << "Fold";
+            } else {
+                std::cout << "Wins by Fold";
+            }
+
+            std::cout << '\n';
+        }
+
+        std::cout << "\nWinner: Player "
+                  << winner << " (Fold)\n";
+    }
+
+    // --------------------------------------------------
+    // Showdown
+    // --------------------------------------------------
+
+    else {
+        const HandRank rank0 = evaluatePlayer(state, 0);
+        const HandRank rank1 = evaluatePlayer(state, 1);
+
+        const std::array<HandRank, 2> ranks{
+            rank0, rank1
+        };
+
+        for (int i = 0; i < 2; ++i) {
+            const auto& hole = state.player(i).holeCards();
+
+            std::cout << "Player " << i << ": ";
+
+            printCard(hole[0]);
+            std::cout << ' ';
+            printCard(hole[1]);
+
+            std::cout << " -> ";
+            printHandRank(ranks[i]);
+            std::cout << '\n';
+        }
+
+        if (rank0 > rank1) {
+            std::cout << "\nWinner: Player 0 (";
+            printHandRank(rank0);
+            std::cout << ")\n";
+        } else if (rank1 > rank0) {
+            std::cout << "\nWinner: Player 1 (";
+            printHandRank(rank1);
+            std::cout << ")\n";
+        } else {
+            std::cout << "\nResult: Split Pot\n";
+        }
+    }
+
+    // --------------------------------------------------
+    // Final stacks and net winnings
+    // --------------------------------------------------
+
+    std::cout << '\n';
+
+    for (int i = 0; i < 2; ++i) {
+        const std::int64_t finalStack =
+            state.player(i).stack();
+
+        const std::int64_t net =
+            finalStack - startingStacks[i];
+
+        std::cout << "Player " << i
+                  << ": " << finalStack
+                  << " (";
+
+        if (net >= 0) {
+            std::cout << '+';
+        }
+
+        std::cout << net << ")\n";
+    }
+}
+
+
+void printGameResult(const GameEngine& game) {
+    const HandState& state = game.currentHand().state();
+
+    const std::int64_t stack0 = state.player(0).stack();
+    const std::int64_t stack1 = state.player(1).stack();
+
+    std::cout << "\n========== GAME RESULT ==========\n";
+
+    std::cout << "Hands played: "
+              << game.handNumber() << '\n';
+
+    std::cout << "Final stacks:\n";
+    std::cout << "  Player 0: " << stack0 << '\n';
+    std::cout << "  Player 1: " << stack1 << '\n';
+
+    if (game.isFinished()) {
+        if (stack0 == 0) {
+            std::cout << "Winner: Player 1\n";
+        } else if (stack1 == 0) {
+            std::cout << "Winner: Player 0\n";
+        }
+    } else {
+        std::cout << "Game stopped: hand limit reached\n";
+
+        if (stack0 > stack1) {
+            std::cout << "Chip leader: Player 0\n";
+        } else if (stack1 > stack0) {
+            std::cout << "Chip leader: Player 1\n";
+        } else {
+            std::cout << "Chip stacks are tied\n";
+        }
+    }
+
+    std::cout << "=================================\n";
 }
 
 } // namespace
@@ -218,6 +492,8 @@ void printResult(
 
 int main() {
     constexpr std::int64_t initialStack = 1000;
+    constexpr std::uint64_t maxHands = 100;
+    constexpr int maxActionsPerHand = 100;
 
     const HandConfig config{50, 100};
 
@@ -225,7 +501,7 @@ int main() {
     std::mt19937 agentRng0{200};
     std::mt19937 agentRng1{400};
 
-    HandEngine engine{
+    GameEngine game{
         {initialStack, initialStack},
         config,
         0,
@@ -239,76 +515,148 @@ int main() {
         &agent0, &agent1
     };
 
-    const std::array<std::int64_t, 2> initialStacks{
+    // Store stacks BEFORE each hand, independently
+    // of the state inside HandEngine.
+    std::array<std::int64_t, 2> startingStacks{
         initialStack, initialStack
     };
 
     std::cout << "=== POKER AI LAB ===\n";
-    std::cout << "RandomAgent vs RandomAgent\n\n";
+    std::cout << "RandomAgent vs RandomAgent\n";
+    std::cout << "Maximum hands: " << maxHands << '\n';
 
-    printInitialState(engine.state(), config);
-    printStreet(engine.state());
+    // The first hand may already be finished.
+    // Therefore, do not require !game.isFinished()
+    // before displaying its result.
+    while (true) {
+        const HandState& initialState =
+            game.currentHand().state();
 
-    constexpr int maxActions = 100;
-    int actionCount = 0;
-
-    while (engine.state().phase() == HandPhase::Betting &&
-           actionCount < maxActions) {
-
-        const auto actor = engine.state().actingPlayer();
-
-        if (!actor.has_value()) {
-            std::cerr << "ERROR: No acting player\n";
-            return 1;
-        }
-
-        const std::uint8_t player = *actor;
-
-        const auto observation = engine.observe(player);
-
-        const Action action =
-            agents[player]->chooseAction(observation);
-
-        // Save information before applying the action.
-        const Street previousStreet = engine.state().street();
-
-        const auto& current = engine.state().player(player);
-        const auto& opponent = engine.state().player(1 - player);
-
-        const std::int64_t toCall = std::max<std::int64_t>(
-            0,
-            opponent.committedStreet() - current.committedStreet()
+        printInitialState(
+            initialState,
+            config,
+            game.handNumber(),
+            startingStacks
         );
 
-        const std::int64_t callAmount =
-            std::min(toCall, current.stack());
+        if (initialState.phase() == HandPhase::Betting) {
+            printStreet(initialState);
+        } else {
+            // A hand can finish automatically when
+            // the blinds put a player all-in.
+            std::cout << "\n[AUTOMATIC ALL-IN]\n";
 
-        // Apply the action before printing it.
-        engine.applyAction(player, action);
-
-        const bool allIn =
-            action.type != ActionType::Fold &&
-            engine.state().player(player).isAllIn();
-
-        printAction(player, action, callAmount, allIn);
-
-        // Print state only when entering a new betting street.
-        if (engine.state().phase() == HandPhase::Betting &&
-            engine.state().street() != previousStreet) {
-
-            printStreet(engine.state());
+            printRunout(initialState, 0);
         }
 
-        ++actionCount;
+        int actionCount = 0;
+
+        // --------------------------------------------------
+        // Betting loop
+        // --------------------------------------------------
+
+        while (game.currentHand().state().phase() ==
+               HandPhase::Betting) {
+
+            if (actionCount >= maxActionsPerHand) {
+                std::cerr
+                    << "ERROR: Hand exceeded action limit\n";
+                return EXIT_FAILURE;
+            }
+
+            const HandState& state =
+                game.currentHand().state();
+
+            const auto actor = state.actingPlayer();
+
+            if (!actor.has_value()) {
+                std::cerr << "ERROR: No acting player\n";
+                return EXIT_FAILURE;
+            }
+
+            const std::uint8_t player = *actor;
+
+            const auto observation =
+                game.currentHand().observe(player);
+
+            const Action action =
+                agents[player]->chooseAction(observation);
+
+            const Street previousStreet = state.street();
+            const std::size_t previousBoardSize =
+                state.board().size();
+
+            const auto& current = state.player(player);
+            const auto& opponent = state.player(1 - player);
+
+            const std::int64_t toCall =
+                std::max<std::int64_t>(
+                    0,
+                    opponent.committedStreet() -
+                    current.committedStreet()
+                );
+
+            const std::int64_t callAmount =
+                std::min(toCall, current.stack());
+
+            game.applyAction(player, action);
+
+            const HandState& updatedState =
+                game.currentHand().state();
+
+            const bool allIn =
+                action.type != ActionType::Fold &&
+                action.type != ActionType::Check &&
+                updatedState.player(player).isAllIn();
+
+            printAction(
+                player,
+                action,
+                callAmount,
+                allIn
+            );
+
+            if (updatedState.phase() == HandPhase::Betting) {
+                if (updatedState.street() != previousStreet) {
+                    printStreet(updatedState);
+                }
+            } else {
+                // The hand may have automatically advanced
+                // through multiple streets to showdown.
+                printRunout(
+                    updatedState,
+                    previousBoardSize
+                );
+            }
+
+            ++actionCount;
+        }
+
+        const HandState& finishedState =
+            game.currentHand().state();
+
+        if (finishedState.phase() != HandPhase::Finished) {
+            std::cerr << "ERROR: Hand did not finish\n";
+            return EXIT_FAILURE;
+        }
+
+        printHandResult(finishedState, startingStacks);
+
+        // Capture final stacks BEFORE replacing HandEngine.
+        startingStacks = {
+            finishedState.player(0).stack(),
+            finishedState.player(1).stack()
+        };
+
+        if (game.isFinished() ||
+            game.handNumber() >= maxHands) {
+            break;
+        }
+
+        game.nextHand();
     }
 
-    if (engine.state().phase() != HandPhase::Finished) {
-        std::cerr << "ERROR: Hand did not finish\n";
-        return 1;
-    }
+    printGameResult(game);
 
-    
-    printResult(engine.state(), initialStacks);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
