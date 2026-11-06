@@ -21,6 +21,7 @@ add_library(poker_core
     src/hand_state.cc
     src/hand_engine.cc
     src/random_agent.cc
+    src/game_engine.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
 )
@@ -128,4 +129,9 @@ if(BUILD_TESTING)
     # CLI Hand Viewer
     add_executable(poker_hand_viewer apps/poker_hand_viewer.cc)
     target_link_libraries(poker_hand_viewer PRIVATE poker_core)
+
+    # Game Engine tests
+    add_executable(game_engine_test tests/game_engine_test.cc)
+    target_link_libraries(game_engine_test PRIVATE poker_core)
+    add_test(NAME game_engine_test COMMAND game_engine_test)
 endif()
