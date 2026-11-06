@@ -20,7 +20,9 @@ add_library(poker_core
     src/player_state.cc
     src/hand_state.cc
     src/hand_engine.cc
+    src/random_agent.cc
     apps/poker_equity.cc
+    apps/poker_hand_viewer.cc
 )
 
 target_include_directories(poker_core
@@ -80,7 +82,7 @@ if(BUILD_TESTING)
     target_link_libraries(equity_monte_carlo_test PRIVATE poker_core)
     add_test(NAME equity_monte_carlo_test COMMAND equity_monte_carlo_test)
 
-    # CLI Poker Equity tests 
+    # CLI Poker Equity  
     add_executable(poker_equity apps/poker_equity.cc)
     target_link_libraries(poker_equity PRIVATE poker_core)
 
@@ -117,4 +119,13 @@ if(BUILD_TESTING)
     add_executable(legal_actions_test tests/legal_actions_test.cc)
     target_link_libraries(legal_actions_test PRIVATE poker_core)
     add_test(NAME legal_actions_test COMMAND legal_actions_test)
+
+    # Random Agent tests
+    add_executable(random_agent_test tests/random_agent_test.cc)
+    target_link_libraries(random_agent_test PRIVATE poker_core)
+    add_test(NAME random_agent_test COMMAND random_agent_test)
+
+    # CLI Hand Viewer
+    add_executable(poker_hand_viewer apps/poker_hand_viewer.cc)
+    target_link_libraries(poker_hand_viewer PRIVATE poker_core)
 endif()
