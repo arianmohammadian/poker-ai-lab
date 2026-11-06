@@ -135,3 +135,27 @@ if(BUILD_TESTING)
     target_link_libraries(game_engine_test PRIVATE poker_core)
     add_test(NAME game_engine_test COMMAND game_engine_test)
 endif()
+
+# Poker Arena GUI
+option(POKER_BUILD_GUI "Build the graphical Poker Arena" OFF)
+
+if(POKER_BUILD_GUI)
+    include(FetchContent)
+
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+    FetchContent_Declare(
+        raylib
+        GIT_REPOSITORY https://github.com/raysan5/raylib.git
+        GIT_TAG 6.2
+        GIT_SHALLOW TRUE
+    )
+
+    FetchContent_MakeAvailable(raylib)
+
+    add_executable(poker_arena apps/poker_arena.cc apps/arena/arena_view.cc)
+    target_link_libraries(poker_arena PRIVATE poker_core raylib)
+    target_compile_definitions(poker_arena PRIVATE
+        POKER_ARENA_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets/arena\"
+    )
+endif()

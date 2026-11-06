@@ -1,8 +1,14 @@
+
 # CMake build directories
 /build/
-/build-debug/
-/build-release/
+/build-*/
 /cmake-build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
 
 # Compiled binaries
 /card_test
@@ -19,9 +25,12 @@
 .DS_Store
 .idea/
 
-# Python (future)
+# Python
 __pycache__/
 .venv/
 
 # Generated experiment data
 /results/
+
+# Temporary Arena packages
+/Poker_Arena_Premium*.zip
