@@ -68,7 +68,7 @@ Full-scale GTO solving for No-Limit Texas Hold'em is not a committed deliverable
 
 ### v0.2 — Equity Calculator
 
-**Status:** Functional implementation complete — 11/11 local CTest tests passing. Final documentation and GitHub Actions verification pending.
+**Status:** Completed — exact/Monte Carlo algorithms, interactive CLI, and automated validation implemented.
 
 **Goal:** Calculate equity for two known Heads-Up Texas Hold'em hands.
 
@@ -91,8 +91,8 @@ Full-scale GTO solving for No-Limit Texas Hold'em is not a committed deliverable
 - [x] Fixed-seed Monte Carlo is reproducible in the same implementation environment.
 - [x] Ties contribute half the pot to each player's equity.
 - [x] CLI interaction and input validation tests added.
-- [x] 11/11 automated tests passing locally; changes committed.
-- [ ] Verify Debug and Release workflows in GitHub Actions for the complete v0.2 suite.
+- [x] Automated tests passing locally; changes committed.
+- [x] Debug and Release GitHub Actions jobs verified during v0.2 development.
 - [ ] Benchmark and document simulation performance.
 
 **Deliverable:** An interactive Heads-Up Texas Hold'em equity calculator using the reusable `poker_core` library.
@@ -101,51 +101,40 @@ Full-scale GTO solving for No-Limit Texas Hold'em is not a committed deliverable
 
 ---
 
-### v0.3 — Heads-Up NLHE Game Engine
+### v0.3 — Heads-Up NLHE Hand Engine
 
-**Goal:** Simulate complete legal Heads-Up No-Limit Texas Hold'em games.
+**Status:** Core hand engine implemented — 15/15 local CTest tests passing, including reproducible randomized stress testing. Tag/release and v0.3 CI verification to be confirmed separately.
 
-**Scope**
+**Goal:** Execute complete individual Heads-Up No-Limit Texas Hold'em hands under the authoritative engine rules.
 
-- Represent players, stacks, pots, and game state.
+**Implemented scope**
 
-- Implement blinds, dealer/button position, and action order.
+- [x] Represent players, hole cards, stacks, board, committed chips, payouts, and hand phase.
+- [x] Deal hole cards, post blinds, and initialize Heads-Up betting action order.
+- [x] Validate `Fold`, `Check`, `Call`, `Bet`, and `Raise` actions.
+- [x] Handle full raises, minimum raises, short all-ins, and unmatched-chip refunds.
+- [x] Advance through preflop, flop, turn, and river, burning cards when dealing.
+- [x] Handle automatic all-in runouts, folds, showdown, ties, and pot settlement.
+- [x] Support seeded, reproducible engine execution.
+- [x] Cover representative hands and randomized stress scenarios in automated tests.
 
-- Implement preflop, flop, turn, and river transitions.
+**Verification**
 
-- Validate fold, check, call, bet, raise, and all-in actions.
+- [x] Local build and complete test suite: **15/15 CTest tests passing**.
+- [x] Randomized stress test: 10,000 hands, run twice with a fixed seed.
+- [x] Tests exercise betting sequences, settlement, and chip conservation.
+- [ ] Confirm v0.3 Debug/Release GitHub Actions results for the final commit.
+- [ ] Record independent NLHE rules/reference checks and sanitizer results.
 
-- Handle betting rounds, minimum raises, and short all-in raises.
+**Interface boundary / next milestone**
 
-- Resolve showdowns, split pots, and pot distribution.
+`HandEngine::state()` returns authoritative state, which includes both players' hole cards. **It must not be provided directly to an AI agent or an untrusted player UI.** A restricted player observation and legal-action API is required before agent integration, and is explicitly part of v0.4.
 
-- Support deterministic game execution for testing.
+**Deliverable:** A reusable, locally tested single-hand Heads-Up NLHE engine. It is not yet a playable multi-hand match or an agent-safe public API.
 
-- Expose observations without revealing hidden opponent cards.
+**Deferred:** Match coordination, player-specific observations, agent integration, multiway play, tournaments, and graphical presentation.
 
-**Acceptance criteria**
-
-- Complete Heads-Up hands can be simulated.
-
-- All generated and accepted actions comply with the implemented rules.
-
-- Betting and all-in edge cases are tested.
-
-- Chip conservation is verified across state transitions, including settlement.
-
-- Showdown results agree with the hand evaluator.
-
-- Hidden cards are not exposed to agents.
-
-- Fixed-seed games are reproducible.
-
-- Automated tests cover representative game sequences.
-
-**Deliverable:** A standalone, tested Heads-Up NLHE engine.
-
-**Deferred:** Multiway play, tournament structures, and advanced table management.
-
-**---**
+---
 
 ### v0.4 — First AI Arena
 
@@ -153,7 +142,9 @@ Full-scale GTO solving for No-Limit Texas Hold'em is not a committed deliverable
 
 **Scope**
 
-- Define a minimal interface between game engine and agents.
+- Define a player-specific observation interface and legal-action contract that cannot reveal hidden cards.
+
+- Implement match coordination across hands (stacks, button rotation, and match termination).
 
 - Implement a random legal-action agent.
 
@@ -409,8 +400,8 @@ Features outside the agreed scope do not block milestone completion.
 
 ## 7. Current Status
 
-**Current phase:** v0.2 Equity Calculator — implementation and local tests complete; final documentation and CI verification pending.
+**Current phase:** v0.3 single-hand Heads-Up NLHE engine implemented and locally validated (15/15 CTest tests passing).
 
-**Next development milestone:** v0.3 — Heads-Up NLHE Game Engine (after final v0.2 quality checks).
+**Next development milestone:** v0.4 — First AI Arena, beginning with a restricted player-observation API, legal actions, match coordination, and a playable CLI.
 
-v0.1 is complete; v0.2 is functionally complete with 11/11 local tests passing. Performance benchmarks and final CI verification remain open as documented above.
+**Release checklist:** Update documentation (this revision), confirm final v0.3 Debug/Release CI, then publish the `v0.3.0` tag. Sanitizer runs, independent rule checking, and benchmarking remain follow-up quality work and must not be claimed as completed without evidence.

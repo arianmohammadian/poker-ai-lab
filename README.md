@@ -28,11 +28,11 @@ Correctness, reproducibility, and measurable progress are fundamental to its dev
 
 ## Current Progress
 
-**Status: Active Development — v0.2 Equity Calculator (Implementation Complete)**
+**Status: v0.3 — Heads-Up Hand Engine implemented and locally tested; v0.4 in planning**
 
-The Poker Core and Equity Calculator milestones have been implemented and validated through automated tests.
+The Poker Core, Equity Calculator, and Heads-Up hand engine milestones have been implemented and validated with automated tests.
 
-The project now provides complete five-card and seven-card hand evaluation, exact Heads-Up equity computation, reproducible Monte Carlo simulation, and an interactive command-line interface.
+The project provides five-card and seven-card hand evaluation, exact Heads-Up equity computation, reproducible Monte Carlo simulation, an interactive equity CLI, and a reusable engine for executing individual Heads-Up NLHE hands. A playable match CLI and AI agents are not yet included.
 
 ### Implemented
 
@@ -62,15 +62,30 @@ The project now provides complete five-card and seven-card hand evaluation, exac
 - [x] Win, loss, tie, and equity statistics
 - [x] Interactive CLI supporting both calculation methods
 - [x] Input validation and CLI integration tests
-- [x] Automated test suite (11/11 tests passing locally)
+- [x] Automated tests covering equity calculation and CLI behavior
 
-### In Progress / Next Steps
+**v0.3 — Heads-Up NLHE Hand Engine**
 
-- [ ] Final documentation updates for v0.2
-- [ ] Verify the complete v0.2 test suite in GitHub Actions (Debug and Release)
-- [ ] Performance benchmarks and profiling
-- [ ] Sanitizer-based validation
-- [ ] v0.3 — Heads-Up No-Limit Texas Hold'em Game Engine
+- [x] `PlayerState`, `HandState`, `HandEngine`, and player action representation
+- [x] Heads-Up button, blind posting, and preflop action order
+- [x] `Fold`, `Check`, `Call`, `Bet`, and `Raise` with validation
+- [x] Minimum raises, short all-ins, and unmatched-chip refunds
+- [x] Preflop, flop, turn, and river transitions with burn cards
+- [x] Automatic runouts, showdown, and pot settlement
+- [x] Seeded dealing for repeatable test scenarios
+- [x] Integration tests and randomized stress testing (10,000 hands, repeated with the same seed)
+- [x] Complete local CTest suite: **15/15 tests passing** (as reported for v0.3)
+
+**Next Steps — v0.4 First AI Arena**
+
+- [ ] Introduce a player-specific observation API that hides opponent hole cards and undealt cards
+- [ ] Implement a legal-action interface for agents and human input
+- [ ] Introduce a match coordinator for multiple hands, stack carry-over, and button rotation
+- [ ] Build a playable Heads-Up command-line application
+- [ ] Add baseline agents and reproducible agent-versus-agent matches
+- [ ] Confirm the v0.3 commit passes both Debug and Release CI workflows
+
+**Ongoing quality work:** sanitizer runs, independent rule/reference checks where practical, and performance benchmarks.
 
 ### Exhaustive Hand Evaluation Testing
 
@@ -210,7 +225,7 @@ The Equity Calculator includes automated tests covering:
 - Invalid board sizes and duplicate cards
 - CLI input validation and integration
 
-The complete project test suite currently contains **11 passing tests**.
+The complete project test suite has **15/15 local CTest tests passing** following v0.3 integration.
 
 ---
 
@@ -219,8 +234,9 @@ The complete project test suite currently contains **11 passing tests**.
 | Component | Purpose | Status |
 |---|---|---|
 | Poker Core | Cards, deck management, five-card and seven-card hand evaluation | Completed (v0.1) |
-| Equity Calculator | Exact enumeration, Monte Carlo simulation, and interactive CLI | Implemented (v0.2) |
-| Game Engine | Heads-Up NLHE rules, betting, and state transitions | Planned |
+| Equity Calculator | Exact enumeration, Monte Carlo simulation, and interactive CLI | Completed (v0.2) |
+| Hand Engine | Individual Heads-Up NLHE hands, betting, street transitions, and settlement | Implemented and locally tested (v0.3) |
+| Match Coordinator | Multiple hands, button rotation, and match lifecycle | Planned (v0.4) |
 | AI Agents | Random, heuristic, and learned strategies | Planned |
 | Poker Solver | CFR and imperfect-information game solving | Planned |
 | Training | Self-play and reproducible learning experiments | Planned |
@@ -236,8 +252,8 @@ Development follows independently testable milestones, prioritizing correctness 
 | Version | Milestone | Status |
 |---|---|---|
 | v0.1 | Poker Core & Hand Evaluator | Completed |
-| v0.2 | Equity Calculator | Implementation complete |
-| v0.3 | Heads-Up NLHE Game Engine | Planned |
+| v0.2 | Equity Calculator | Completed |
+| v0.3 | Heads-Up NLHE Hand Engine | Implemented; local tests passing |
 | v0.4 | First AI Arena (CLI) | Planned |
 | v0.5 | CFR Research Lab | Planned |
 | v0.6 | Self-Play Training | Planned |
@@ -308,7 +324,7 @@ cmake --build build-debug --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-The project uses automated C++ test executables registered with CTest.
+The project uses automated C++ test executables registered with CTest. The v0.3 suite includes integration scenarios and randomized, fixed-seed engine stress tests; these complement rather than replace independent rule validation.
 
 Continuous integration runs the build and test suite through GitHub Actions for both Debug and Release configurations.
 
@@ -320,7 +336,7 @@ After building the project, launch the interactive equity calculator:
 ./build/poker_equity
 ```
 
-The application supports exact enumeration and Monte Carlo simulation for two known Heads-Up Texas Hold'em hands.
+The application supports exact enumeration and Monte Carlo simulation for two known Heads-Up Texas Hold'em hands. **This is currently the interactive CLI:** the hand engine is a C++ library and the playable poker CLI is planned for v0.4.
 
 For Monte Carlo calculations, specify a positive sample count and a random seed.
 
