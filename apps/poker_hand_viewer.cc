@@ -307,6 +307,7 @@ int main() {
         return 1;
     }
 
+    
     printResult(engine.state(), initialStacks);
 
     return 0;
