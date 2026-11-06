@@ -11,6 +11,8 @@
 #include "poker/hand_state.h"
 #include "poker/hand_evaluator.h"
 #include "poker/action.h"
+#include "poker/player_observation.h"
+#include "poker/legal_actions.h"
 
 #include <array>
 #include <cstdint>
@@ -28,6 +30,8 @@ public:
     );
 
     [[nodiscard]] const HandState& state() const noexcept;
+    [[nodiscard]] PlayerObservation observe(std::uint8_t player) const;
+    [[nodiscard]] LegalActions legalActions(std::uint8_t player) const;
 
     void applyAction(std::uint8_t player, Action action);
 

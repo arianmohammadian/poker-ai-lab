@@ -85,12 +85,7 @@ if(BUILD_TESTING)
     target_link_libraries(poker_equity PRIVATE poker_core)
 
     # CLI Poker Equity Monte Carlo tests 
-    add_test(
-        NAME equity_cli_test
-        COMMAND ${CMAKE_COMMAND}
-            "-DCLI_EXE=$<TARGET_FILE:poker_equity>"
-            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/equity_cli_test.cmake"
-    )
+    add_test(NAME equity_cli_test COMMAND ${CMAKE_COMMAND} "-DCLI_EXE=$<TARGET_FILE:poker_equity>" -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/equity_cli_test.cmake")
 
     # Player State tests
     add_executable(player_state_test tests/player_state_test.cc)
@@ -112,4 +107,14 @@ if(BUILD_TESTING)
     target_link_libraries(hand_engine_stress_test PRIVATE poker_core)
     add_test(NAME HandEngineStressTests COMMAND hand_engine_stress_test)
     set_tests_properties(HandEngineStressTests PROPERTIES LABELS "slow")
+
+    # Player Observation tests
+    add_executable(player_observation_test tests/player_observation_test.cc)
+    target_link_libraries(player_observation_test PRIVATE poker_core)
+    add_test(NAME player_observation_test COMMAND player_observation_test)
+
+    # Legal Actions tests
+    add_executable(legal_actions_test tests/legal_actions_test.cc)
+    target_link_libraries(legal_actions_test PRIVATE poker_core)
+    add_test(NAME legal_actions_test COMMAND legal_actions_test)
 endif()

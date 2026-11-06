@@ -91,6 +91,90 @@ const HandState& HandEngine::state() const noexcept {
     return state_;
 }
 
+PlayerObservation HandEngine::observe(std::uint8_t player) const {
+    if (player >= 2) {
+        throw std::invalid_argument("Invalid player index");
+    }
+
+    std::optional<LegalActions> legal;
+
+    if (state_.phase() == HandPhase::Betting &&
+        state_.actingPlayer() == player) {
+        legal = legalActions(player);
+    }
+
+    return PlayerObservation{
+        player,
+        state_.player(player).holeCards(),
+        state_.board(),
+        {state_.players_[0].stack(), state_.players_[1].stack()},
+        {state_.players_[0].committedStreet(), state_.players_[1].committedStreet()},
+        state_.pot(),
+        state_.street(),
+        state_.button(),
+        legal
+    };
+}
+
+LegalActions HandEngine::legalActions(std::uint8_t player) const {
+    if (player >= 2) {
+        throw std::invalid_argument("Invalid player index");
+    }
+
+    if (state_.phase() != HandPhase::Betting ||
+        state_.actingPlayer() != player) {
+        throw std::invalid_argument("It is not this player's turn");
+    }
+
+    const PlayerState& current = state_.player(player);
+    const PlayerState& opponent = state_.player(1 - player);
+
+    const std::int64_t mine = current.committedStreet();
+    const std::int64_t theirs = opponent.committedStreet();
+
+    LegalActions legal;
+
+    legal.toCall = std::max<std::int64_t>(0, theirs - mine);
+
+    legal.canFold = true;
+
+    legal.canCheck = (legal.toCall == 0);
+
+    legal.canCall = (legal.toCall > 0 && current.stack() > 0);
+
+    legal.canBet = (mine == 0 && theirs == 0 &&
+    current.stack() > 0 && !opponent.isAllIn());
+
+    if (legal.canBet) {
+        const std::int64_t minTotal = config_.bigBlind;
+        const std::int64_t maxTotal = mine + current.stack();
+
+        if (maxTotal >= minTotal) {
+            legal.minBet = minTotal;
+            legal.maxBet = maxTotal;
+        } else {
+            legal.shortAllInBet = maxTotal;
+        }
+    }
+
+    legal.canRaise = (mine > 0 || theirs > 0) && !opponent.isAllIn() &&
+    mine + current.stack() > theirs;
+
+    if (legal.canRaise) {
+        const std::int64_t maxTotal = mine + current.stack();
+        const std::int64_t minTotal = theirs + state_.lastFullRaise();
+
+        if (maxTotal >= minTotal) {
+            legal.minRaise = minTotal;
+            legal.maxRaise = maxTotal;
+        } else {
+            legal.shortAllInRaise = maxTotal;
+        }
+    }
+
+    return legal;
+}
+
 void HandEngine::postBlinds() {
     const auto sb = state_.button_;
     const auto bb = 1 - sb;
