@@ -23,8 +23,10 @@ add_library(poker_core
     src/random_agent.cc
     src/heuristic_agent.cc
     src/game_engine.cc
+    src/match_runner.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
+    apps/benchmark_main.cc
 )
 
 target_include_directories(poker_core
@@ -141,10 +143,19 @@ if(BUILD_TESTING)
     add_executable(poker_hand_viewer apps/poker_hand_viewer.cc)
     target_link_libraries(poker_hand_viewer PRIVATE poker_core)
 
+    # CLI Benchmark
+    add_executable(poker_benchmark apps/benchmark_main.cc)
+    target_link_libraries(poker_benchmark PRIVATE poker_core)
+
     # Game Engine tests
     add_executable(game_engine_test tests/game_engine_test.cc)
     target_link_libraries(game_engine_test PRIVATE poker_core)
     add_test(NAME game_engine_test COMMAND game_engine_test)
+
+    # Match Runner tests 
+    add_executable(match_runner_test tests/match_runner_test.cc)
+    target_link_libraries(match_runner_test PRIVATE poker_core)
+    add_test(NAME match_runner_test COMMAND match_runner_test)
 endif()
 
 # Poker Arena GUI
