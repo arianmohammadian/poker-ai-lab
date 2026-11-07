@@ -33,7 +33,15 @@ struct HeuristicConfig {
 
 class HeuristicAgent final : public Agent {
 public:
-    explicit HeuristicAgent(std::mt19937& rng, HeuristicConfig config = {});
+    explicit HeuristicAgent(
+        std::mt19937& rng,
+        HeuristicConfig config = {}
+    );
+
+    explicit HeuristicAgent(
+        std::mt19937& rng,
+        HeuristicMode mode
+    );
 
     [[nodiscard]] Action chooseAction(
         const PlayerObservation& observation

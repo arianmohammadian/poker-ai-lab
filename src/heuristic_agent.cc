@@ -47,6 +47,12 @@ HeuristicAgent::HeuristicAgent(
     validateConfigParams(config);
 }
 
+HeuristicAgent::HeuristicAgent(
+    std::mt19937& rng,
+    HeuristicMode mode
+)
+    : HeuristicAgent(rng, HeuristicConfig{.mode = mode}) {}
+
 std::int64_t HeuristicAgent::calculateBetSize(
     const PlayerObservation& observation
 ) const {

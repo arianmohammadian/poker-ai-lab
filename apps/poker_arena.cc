@@ -99,8 +99,12 @@ arena::VisualCard visualCard(const poker::Card& c) {
 
 class Session {
 public:
-    Session() : deckRng_(kDeckSeed), a0Rng_(kAgent0Seed),
-                a1Rng_(kAgent1Seed), a0_(a0Rng_), a1_(a1Rng_) {
+    Session()
+        : deckRng_(kDeckSeed),
+        a0Rng_(kAgent0Seed),
+        a1Rng_(kAgent1Seed),
+        a0_(a0Rng_, poker::HeuristicMode::Aggressive),
+        a1_(a1Rng_, poker::HeuristicMode::Aggressive) {
         reset();
     }
 
