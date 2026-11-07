@@ -21,6 +21,7 @@ add_library(poker_core
     src/hand_state.cc
     src/hand_engine.cc
     src/random_agent.cc
+    src/heuristic_agent.cc
     src/game_engine.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
@@ -130,6 +131,11 @@ if(BUILD_TESTING)
     add_executable(random_agent_test tests/random_agent_test.cc)
     target_link_libraries(random_agent_test PRIVATE poker_core)
     add_test(NAME random_agent_test COMMAND random_agent_test)
+
+    # Heuristic Agent tests 
+    add_executable(heuristic_agent_test tests/heuristic_agent_test.cc)
+    target_link_libraries(heuristic_agent_test PRIVATE poker_core)
+    add_test(NAME heuristic_agent_test COMMAND heuristic_agent_test)
 
     # CLI Hand Viewer
     add_executable(poker_hand_viewer apps/poker_hand_viewer.cc)
