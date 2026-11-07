@@ -13,6 +13,7 @@
 #include "poker/game_engine.h"
 #include "poker/hand_phase.h"
 #include "poker/random_agent.h"
+#include "poker/heuristic_agent.h"
 #include "poker/street.h"
 
 #include "raylib.h"
@@ -261,8 +262,8 @@ private:
     std::mt19937 deckRng_;
     std::mt19937 a0Rng_;
     std::mt19937 a1Rng_;
-    poker::RandomAgent a0_;
-    poker::RandomAgent a1_;
+    poker::HeuristicAgent a0_;
+    poker::HeuristicAgent a1_;
     std::optional<poker::GameEngine> game_;
     Playback playback_;
 };
