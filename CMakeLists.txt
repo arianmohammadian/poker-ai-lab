@@ -83,6 +83,11 @@ if(BUILD_TESTING)
     target_link_libraries(equity_monte_carlo_test PRIVATE poker_core)
     add_test(NAME equity_monte_carlo_test COMMAND equity_monte_carlo_test)
 
+    # Equity Calculator vs Unknown Opponent tests
+    add_executable(equity_unknown_test tests/equity_unknown_test.cc)
+    target_link_libraries(equity_unknown_test PRIVATE poker_core)
+    add_test(NAME equity_unknown_test COMMAND equity_unknown_test)
+
     # CLI Poker Equity  
     add_executable(poker_equity apps/poker_equity.cc)
     target_link_libraries(poker_equity PRIVATE poker_core)

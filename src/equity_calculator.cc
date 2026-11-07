@@ -43,6 +43,29 @@ std::vector<Card> availableCards(const EquityInput& input) {
     return available;
 }
 
+std::vector<Card> availableCards(
+    const std::array<Card, 2>& hero,
+    const std::vector<Card>& board
+) {
+    std::vector<Card> available;
+    available.reserve(52 - 2 - board.size());
+
+    std::array<bool, 52> seen{};
+
+    for(const Card& card : hero) seen[cardId(card)] = true;
+    for(const Card& card : board) seen[cardId(card)] = true;
+
+    for (int rank = 2; rank <= 14; ++rank) {
+        for (int suit = 0; suit < 4; ++suit) {
+            int id = (rank - 2) * 4 + suit;
+
+            if (!seen[id]) available.emplace_back(static_cast<Rank>(rank), static_cast<Suit>(suit));
+        }
+    }
+
+    return available;
+}
+
 void evaluateShowdown(
     const std::array<Card, 2>& player1,
     const std::array<Card, 2>& player2,
@@ -85,17 +108,21 @@ void checkAndMark(const Card& card, std::array<bool, 52>& seen) {
     seen[id] = true;
 }
 
+void validateBoardSize(const std::vector<Card>& board) {
+    if (board.size() != 0 &&
+        board.size() != 3 &&
+        board.size() != 4 &&
+        board.size() != 5) {
+        throw invalid_argument("Board size is not correct");
+    }
+}
+
 void validateInput(const EquityInput& input) {
     const auto& player1 = input.player1;
     const auto& player2 = input.player2;
     const auto& board = input.board;
 
-    if( board.size() != 0 &&
-        board.size() != 3 &&
-        board.size() != 4 &&
-        board.size() != 5 ) {
-            throw invalid_argument("Board size is not correct");
-    }
+    validateBoardSize(board);
 
     std::array<bool, 52> seen{};
 
@@ -103,6 +130,21 @@ void validateInput(const EquityInput& input) {
     for(const Card& card : player2) checkAndMark(card, seen);
 
     for(const Card& card : board) checkAndMark(card, seen);
+}
+
+void validateInput(
+    const std::array<Card, 2>& hero,
+    const std::vector<Card>& board
+) {
+    validateBoardSize(board);
+
+    std::array<bool, 52> seen{};
+
+    for (const Card& card : hero)
+        checkAndMark(card, seen);
+
+    for (const Card& card : board)
+        checkAndMark(card, seen);
 }
 
 void enumerateBoards(
@@ -197,6 +239,66 @@ EquityResult EquityCalculator::calculateMonteCarlo(
         }
     }
     
+    return result;
+}
+
+EquityResult EquityCalculator::calculateMonteCarloVsUnknown(
+    const std::array<Card, 2>& hero,
+    const std::vector<Card>& board,
+    std::uint64_t samples,
+    std::uint64_t seed
+) {
+    validateInput(hero, board);
+
+    if (samples == 0)
+        throw std::invalid_argument("Sample count must be positive");
+
+    std::mt19937_64 rng(seed);
+
+    std::vector<Card> available = availableCards(hero, board);
+
+    const std::size_t missing = 5 - board.size();
+    const std::size_t drawn = 2 + missing;
+
+    EquityResult result;
+
+    std::vector<Card> currentBoard = board;
+    currentBoard.reserve(5);
+
+    for (std::uint64_t t = 0; t < samples; ++t) {
+        for (std::size_t i = 0; i < drawn; ++i) {
+            std::uniform_int_distribution<std::size_t> dist(
+                i, available.size() - 1
+            );
+
+            std::size_t j = dist(rng);
+            std::swap(available[i], available[j]);
+        }
+
+        const std::array<Card, 2> opponent = {
+            available[0],
+            available[1]
+        };
+
+        for (std::size_t i = 0; i < missing; ++i) {
+            currentBoard.push_back(available[2 + i]);
+        }
+
+        const std::array<Card, 5> completeBoard = {
+            currentBoard[0],
+            currentBoard[1],
+            currentBoard[2],
+            currentBoard[3],
+            currentBoard[4]
+        };
+
+        evaluateShowdown(hero, opponent, completeBoard, result);
+
+        while (currentBoard.size() > board.size()) {
+            currentBoard.pop_back();
+        }
+    }
+
     return result;
 }
 
