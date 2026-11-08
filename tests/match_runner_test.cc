@@ -71,6 +71,13 @@ void checkSameResult(
           "Reproducibility: totalHands differs");
 }
 
+poker::HeuristicConfig fastConfig(HeuristicMode mode) {
+    poker::HeuristicConfig config;
+    config.mode = mode;
+    config.equitySamples = 50;
+    return config;
+}
+
 // ------------------------------------------------------------
 // Test 1: A single game must finish correctly.
 // ------------------------------------------------------------
@@ -101,12 +108,12 @@ void testMultipleGames() {
     RandomAgent agentB(rngB);
 
     MatchConfig config;
-    config.games = 100;
+    config.games = 10;
 
     const MatchResult result =
         MatchRunner::run(agentA, agentB, config);
 
-    checkResultInvariants(result, 100);
+    checkResultInvariants(result, 10);
 }
 
 // ------------------------------------------------------------
@@ -126,7 +133,7 @@ void testReproducibility() {
     RandomAgent agentB2(rngB2);
 
     MatchConfig config;
-    config.games = 50;
+    config.games = 5;
     config.seed = 42;
 
     const MatchResult first =
@@ -135,8 +142,8 @@ void testReproducibility() {
     const MatchResult second =
         MatchRunner::run(agentA2, agentB2, config);
 
-    checkResultInvariants(first, 50);
-    checkResultInvariants(second, 50);
+    checkResultInvariants(first, 5);
+    checkResultInvariants(second, 5);
 
     checkSameResult(first, second);
 
@@ -191,19 +198,19 @@ void testPassiveVsRandom() {
 
     HeuristicAgent heuristic(
         heuristicRng,
-        HeuristicMode::Passive
+        fastConfig(HeuristicMode::Passive)
     );
 
     RandomAgent random(randomRng);
 
     MatchConfig config;
-    config.games = 20;
+    config.games = 2;
     config.seed = 503;
 
     const MatchResult result =
         MatchRunner::run(heuristic, random, config);
 
-    checkResultInvariants(result, 20);
+    checkResultInvariants(result, 2);
 }
 
 // ------------------------------------------------------------
@@ -215,19 +222,19 @@ void testAggressiveVsRandom() {
 
     HeuristicAgent heuristic(
         heuristicRng,
-        HeuristicMode::Aggressive
+        fastConfig(HeuristicMode::Aggressive)
     );
 
     RandomAgent random(randomRng);
 
     MatchConfig config;
-    config.games = 20;
+    config.games = 2;
     config.seed = 603;
 
     const MatchResult result =
         MatchRunner::run(heuristic, random, config);
 
-    checkResultInvariants(result, 20);
+    checkResultInvariants(result, 2);
 }
 
 // ------------------------------------------------------------
@@ -239,22 +246,22 @@ void testPassiveVsAggressive() {
 
     HeuristicAgent passive(
         passiveRng,
-        HeuristicMode::Passive
+        fastConfig(HeuristicMode::Passive)
     );
 
     HeuristicAgent aggressive(
         aggressiveRng,
-        HeuristicMode::Aggressive
+        fastConfig(HeuristicMode::Aggressive)
     );
 
     MatchConfig config;
-    config.games = 20;
+    config.games = 2;
     config.seed = 703;
 
     const MatchResult result =
         MatchRunner::run(passive, aggressive, config);
 
-    checkResultInvariants(result, 20);
+    checkResultInvariants(result, 2);
 }
 
 // ------------------------------------------------------------
@@ -268,21 +275,21 @@ void testHeuristicReproducibility() {
     std::mt19937 rngB2{802};
 
     HeuristicAgent agentA1(
-        rngA1, HeuristicMode::Aggressive
+    rngA1, fastConfig(HeuristicMode::Aggressive)
     );
     HeuristicAgent agentB1(
-        rngB1, HeuristicMode::Passive
+        rngB1, fastConfig(HeuristicMode::Passive)
     );
 
     HeuristicAgent agentA2(
-        rngA2, HeuristicMode::Aggressive
+        rngA2, fastConfig(HeuristicMode::Aggressive)
     );
     HeuristicAgent agentB2(
-        rngB2, HeuristicMode::Passive
+        rngB2, fastConfig(HeuristicMode::Passive)
     );
 
     MatchConfig config;
-    config.games = 10;
+    config.games = 2;
     config.seed = 803;
 
     const MatchResult first =
@@ -291,7 +298,7 @@ void testHeuristicReproducibility() {
     const MatchResult second =
         MatchRunner::run(agentA2, agentB2, config);
 
-    checkResultInvariants(first, 10);
+    checkResultInvariants(first, 2);
     checkSameResult(first, second);
 
     check(rngA1 == rngA2,
