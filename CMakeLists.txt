@@ -24,6 +24,7 @@ add_library(poker_core
     src/heuristic_agent.cc
     src/game_engine.cc
     src/match_runner.cc
+    src/preflop_equity_table.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
     apps/benchmark_main.cc
@@ -156,6 +157,10 @@ if(BUILD_TESTING)
     add_executable(match_runner_test tests/match_runner_test.cc)
     target_link_libraries(match_runner_test PRIVATE poker_core)
     add_test(NAME match_runner_test COMMAND match_runner_test)
+
+    # Offline preflop equity generator
+    add_executable(generate_preflop_table apps/generate_preflop_table.cc)
+    target_link_libraries(generate_preflop_table PRIVATE poker_core)
 endif()
 
 # Poker Arena GUI
