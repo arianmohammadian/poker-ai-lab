@@ -25,6 +25,8 @@ add_library(poker_core
     src/game_engine.cc
     src/match_runner.cc
     src/preflop_equity_table.cc
+    src/self_play_runner.cc
+    src/abstract_state.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
     apps/benchmark_main.cc
@@ -161,6 +163,16 @@ if(BUILD_TESTING)
     # Offline preflop equity generator
     add_executable(generate_preflop_table apps/generate_preflop_table.cc)
     target_link_libraries(generate_preflop_table PRIVATE poker_core)
+
+    # Self-play runner tests
+    add_executable(self_play_runner_test tests/self_play_runner_test.cc)
+    target_link_libraries(self_play_runner_test PRIVATE poker_core)
+    add_test(NAME self_play_runner_test COMMAND self_play_runner_test)
+
+    # Abstract state tests
+    add_executable(abstract_state_test tests/abstract_state_test.cc)
+    target_link_libraries(abstract_state_test PRIVATE poker_core)
+    add_test(NAME abstract_state_test COMMAND abstract_state_test)
 endif()
 
 # Poker Arena GUI
