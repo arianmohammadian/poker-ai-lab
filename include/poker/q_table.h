@@ -12,6 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace poker {
 
@@ -36,6 +37,9 @@ public:
         const AbstractState& state,
         AbstractAction action
     ) const;
+
+    void save(const std::string& path) const;
+    void load(const std::string& path);
 
 private:
     std::array<double, kEntries> values_{};

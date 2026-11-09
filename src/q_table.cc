@@ -8,6 +8,12 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <fstream>
+#include <iomanip>
+#include <string>
+#include <array>
+#include <ios>
+#include <cstdint>
 
 namespace poker {
 
@@ -66,6 +72,93 @@ void QTable::update(
     // TODO 4: Update the Q value using the
     // incremental sample mean formula.
     values_[idx] = values_[idx] + (reward - values_[idx]) / visits_[idx];
+}
+
+void QTable::save(const std::string& path) const {
+    std::ofstream file(path);
+
+    if (!file)
+        throw std::runtime_error("Cannot open QTable file for writing");
+
+    file << "POKER_AI_LAB_QTABLE 1 " << kEntries << '\n';
+
+    file << std::setprecision(17);
+
+    for (std::size_t i = 0; i < kEntries; ++i) {
+        file << visits_[i] << ' ' << values_[i] << '\n';
+    }
+
+    file.flush();
+
+    if (!file)
+        throw std::runtime_error("Failed to write QTable checkpoint");
+}
+
+void QTable::load(const std::string& path) {
+    std::ifstream file(path);
+
+    if (!file)
+        throw std::runtime_error(
+            "Cannot open QTable checkpoint for reading"
+        );
+
+    std::string magic;
+    std::uint32_t version;
+    std::size_t entries;
+
+    // Validate checkpoint header.
+    if (!(file >> magic >> version >> entries) ||
+        magic != "POKER_AI_LAB_QTABLE" ||
+        version != 1 ||
+        entries != kEntries) {
+        throw std::runtime_error(
+            "Invalid QTable checkpoint header"
+        );
+    }
+
+    // Load into temporary arrays to preserve the current
+    // table if the checkpoint is invalid.
+    std::array<double, kEntries> newValues{};
+    std::array<std::uint64_t, kEntries> newVisits{};
+
+    for (std::size_t i = 0; i < kEntries; ++i) {
+        if (!(file >> newVisits[i] >> newValues[i])) {
+            throw std::runtime_error(
+                "Incomplete or invalid QTable checkpoint"
+            );
+        }
+
+        if (!std::isfinite(newValues[i])) {
+            throw std::runtime_error(
+                "Non-finite Q-value in checkpoint"
+            );
+        }
+
+        if (newVisits[i] == 0 && newValues[i] != 0.0) {
+            throw std::runtime_error(
+                "Unvisited QTable entry has nonzero value"
+            );
+        }
+    }
+
+    // Reject unexpected content after the final entry.
+    file >> std::ws;
+
+    if (file.bad()) {
+        throw std::runtime_error(
+            "Error reading QTable checkpoint"
+        );
+    }
+
+    if (file.peek() != std::char_traits<char>::eof()) {
+        throw std::runtime_error(
+            "Unexpected trailing data in QTable checkpoint"
+        );
+    }
+
+    // Commit changes only after successful validation.
+    values_ = newValues;
+    visits_ = newVisits;
 }
 
 } // namespace poker

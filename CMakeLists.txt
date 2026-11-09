@@ -28,6 +28,9 @@ add_library(poker_core
     src/self_play_runner.cc
     src/abstract_state.cc
     src/abstract_action.cc
+    src/q_table.cc
+    src/learning_agent.cc
+    src/training_runner.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
     apps/benchmark_main.cc
@@ -39,6 +42,11 @@ target_include_directories(poker_core
 )
 
 if(BUILD_TESTING)
+
+    # ----------------------------
+    # TESTS 
+    # ----------------------------
+
     # Card tests
     add_executable(card_test tests/card_test.cc)
     target_link_libraries(card_test PRIVATE poker_core)
@@ -95,12 +103,9 @@ if(BUILD_TESTING)
     target_link_libraries(equity_unknown_test PRIVATE poker_core)
     add_test(NAME equity_unknown_test COMMAND equity_unknown_test)
 
-    # CLI Poker Equity  
-    add_executable(poker_equity apps/poker_equity.cc)
-    target_link_libraries(poker_equity PRIVATE poker_core)
-
     # CLI Poker Equity Monte Carlo tests 
-    add_test(NAME equity_cli_test COMMAND ${CMAKE_COMMAND} "-DCLI_EXE=$<TARGET_FILE:poker_equity>" -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/equity_cli_test.cmake")
+    add_test(NAME equity_cli_test COMMAND ${CMAKE_COMMAND} 
+    "-DCLI_EXE=$<TARGET_FILE:poker_equity>" -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/equity_cli_test.cmake")
 
     # Player State tests
     add_executable(player_state_test tests/player_state_test.cc)
@@ -143,14 +148,6 @@ if(BUILD_TESTING)
     target_link_libraries(heuristic_agent_test PRIVATE poker_core)
     add_test(NAME heuristic_agent_test COMMAND heuristic_agent_test)
 
-    # CLI Hand Viewer
-    add_executable(poker_hand_viewer apps/poker_hand_viewer.cc)
-    target_link_libraries(poker_hand_viewer PRIVATE poker_core)
-
-    # CLI Benchmark
-    add_executable(poker_benchmark apps/benchmark_main.cc)
-    target_link_libraries(poker_benchmark PRIVATE poker_core)
-
     # Game Engine tests
     add_executable(game_engine_test tests/game_engine_test.cc)
     target_link_libraries(game_engine_test PRIVATE poker_core)
@@ -174,6 +171,47 @@ if(BUILD_TESTING)
     add_executable(abstract_state_test tests/abstract_state_test.cc)
     target_link_libraries(abstract_state_test PRIVATE poker_core)
     add_test(NAME abstract_state_test COMMAND abstract_state_test)
+
+    # Abstract action tests
+    add_executable(abstract_action_test tests/abstract_action_test.cc)
+    target_link_libraries(abstract_action_test PRIVATE poker_core)
+    add_test(NAME abstract_action_test COMMAND abstract_action_test)
+
+    # Q_Table tests
+    add_executable(q_table_test tests/q_table_test.cc)
+    target_link_libraries(q_table_test PRIVATE poker_core)
+    add_test(NAME q_table_test COMMAND q_table_test)
+
+    # Learning agent tests
+    add_executable(learning_agent_test tests/learning_agent_test.cc)
+    target_link_libraries(learning_agent_test PRIVATE poker_core)
+    add_test(NAME learning_agent_test COMMAND learning_agent_test)
+
+    # Training runner tests
+    add_executable(training_runner_test tests/training_runner_test.cc)
+    target_link_libraries(training_runner_test PRIVATE poker_core)
+    add_test(NAME training_runner_test COMMAND training_runner_test)
+
+
+    # ---------------------------
+    # CLI'S 
+    # ---------------------------
+
+    # CLI Poker Equity  
+    add_executable(poker_equity apps/poker_equity.cc)
+    target_link_libraries(poker_equity PRIVATE poker_core)
+
+    # CLI Hand Viewer
+    add_executable(poker_hand_viewer apps/poker_hand_viewer.cc)
+    target_link_libraries(poker_hand_viewer PRIVATE poker_core)
+
+    # CLI Benchmark
+    add_executable(poker_benchmark apps/benchmark_main.cc)
+    target_link_libraries(poker_benchmark PRIVATE poker_core)
+
+    # Self-Play trainer CLI 
+    add_executable(poker_train apps/train_main.cc)
+    target_link_libraries(poker_train PRIVATE poker_core)
 endif()
 
 # Poker Arena GUI
