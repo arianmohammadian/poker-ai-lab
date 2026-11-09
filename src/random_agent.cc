@@ -26,7 +26,7 @@ Action RandomAgent::chooseAction(
     std::vector<Action> candidates;
 
     if(legal.canFold) candidates.push_back({ActionType::Fold, 0});
-    if(legal.canCheck) candidates.push_back({ActionType::Fold, 0});
+    if(legal.canCheck) candidates.push_back({ActionType::Check, 0});
     if(legal.canCall) candidates.push_back({ActionType::Call, 0});
     if(legal.canBet) {
         if(legal.shortAllInBet.has_value()) {

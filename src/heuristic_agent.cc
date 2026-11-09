@@ -213,24 +213,7 @@ Action HeuristicAgent::chooseAction(const PlayerObservation& observation) {
 
     // Estimate equity against an unknown opponent hand.
     double equity;
-
-    if (observation.board.empty()) {
-        // Preflop: use precomputed equity.
-        equity = PreflopEquityTable::lookup(
-            observation.holeCards
-        );
-    } else {
-        // Postflop: estimate equity using Monte Carlo.
-        const EquityResult result =
-            EquityCalculator::calculateMonteCarloVsUnknown(
-                observation.holeCards,
-                observation.board,
-                config_.equitySamples,
-                rng_()
-            );
-
-        equity = result.player1Equity();
-    }
+    
     if (observation.board.empty()) {
         // Preflop: use precomputed equity.
         equity = PreflopEquityTable::lookup(
