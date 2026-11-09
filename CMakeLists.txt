@@ -27,6 +27,7 @@ add_library(poker_core
     src/preflop_equity_table.cc
     src/self_play_runner.cc
     src/abstract_state.cc
+    src/abstract_action.cc
     apps/poker_equity.cc
     apps/poker_hand_viewer.cc
     apps/benchmark_main.cc
